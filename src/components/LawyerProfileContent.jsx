@@ -16,9 +16,6 @@ const LawyerProfileContent = () => {
 
   return (
     <>
-      {/* 상단 구분선 */}
-      <div className="bg-[#d9d9d9] h-[10px] w-full" />
-
       <div className="px-[50px] py-[10px] flex-1">
         {/* 환영 문구 */}
         <div className="py-[30px] h-[100px]">

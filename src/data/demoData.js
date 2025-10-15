@@ -175,7 +175,7 @@ export const demoLawyerUsers = [
     name: '김이박',
     email: 'klp123@gmail.com',
     password: 'rladlqkr123!',
-    nickname: '법률전문가김이박',
+    nickname: 'KimLP',
     phone: '010-1234-5678',
     lawFirm: '법무법인 정의',
     lawyerRegistrationNumber: '20241234',

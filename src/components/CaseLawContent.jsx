@@ -65,7 +65,7 @@ export default function CaseLawContent() {
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value)}
                 placeholder="예) 2023기합1234"
-                className="w-full text-[15px] text-[#787878] underline bg-transparent outline-none"
+                className="w-full text-[15px] text-[#787878] bg-transparent outline-none"
               />
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function CaseLawContent() {
                 value={caseName}
                 onChange={(e) => setCaseName(e.target.value)}
                 placeholder="예) 손해배상"
-                className="w-full text-[15px] text-[#787878] underline bg-transparent outline-none"
+                className="w-full text-[15px] text-[#787878] bg-transparent outline-none"
               />
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function CaseLawContent() {
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
                 placeholder="예)민법 제3조"
-                className="w-full text-[15px] text-[#787878] underline bg-transparent outline-none"
+                className="w-full text-[15px] text-[#787878] bg-transparent outline-none"
               />
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function CaseLawContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="검색어를 입력 하세요!"
-              className="w-[410px] text-[15px] text-black underline bg-transparent outline-none"
+              className="w-[410px] text-[15px] text-black bg-transparent outline-none"
             />
             <div
               className="w-[35px] h-[35px] bg-center bg-cover bg-no-repeat cursor-pointer"

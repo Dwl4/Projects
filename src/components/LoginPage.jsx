@@ -140,55 +140,53 @@ export default function LoginPage() {
               ) : (
                 <>
                   {/* 제목 */}
-                  <div className="text-center mb-[30px]">
-                    <h2 className="text-[30px] font-bold text-white drop-shadow-[0px_4px_4px_rgba(0,0,0,0.25)]">
-                      로그인
+                  <div className="text-center">
+                    <h2 className="text-[20px] font-bold text-white drop-shadow-[0px_4px_4px_rgba(0,0,0,0.25)]">
+                      <span className="font-bold">일반 사용자</span>
+                      <span className="font-normal">이신가요?</span>
                     </h2>
                   </div>
 
-                  {/* 소셜 로그인 아이콘들 */}
-                  <div className="flex gap-[20px] justify-center mb-[30px]">
-                    <div className="w-[60px] h-[60px] bg-gray-200 rounded-full flex items-center justify-center">
-                      <img alt="Kakao" className="w-[40px] h-[40px]" src={imgKakao} />
-                    </div>
-                    <div className="w-[60px] h-[60px] bg-gray-200 rounded-full flex items-center justify-center">
-                      <img alt="Google" className="w-[40px] h-[40px]" src={imgGoogle} />
-                    </div>
-                    <div className="w-[60px] h-[60px] bg-gray-200 rounded-full flex items-center justify-center">
-                      <img alt="Naver" className="w-[40px] h-[40px]" src={imgNaver} />
+                  {/* 사용자 이미지 */}
+                  <div className="flex justify-center h-[180px] w-[380px] px-[100px]">
+                    <div className="relative w-[180px] h-[180px]">
+                      <div
+                        className="w-[180px] h-[180px] bg-center bg-cover bg-no-repeat"
+                        style={{ backgroundImage: `url('${imgImage12}')` }}
+                      />
                     </div>
                   </div>
 
                   {/* 이메일 입력 */}
-                  <div className="bg-[#ededed] rounded-[5px] p-[12px] mb-[15px] w-[300px]">
+                  <div className="bg-[#ededed] rounded-[5px] h-[40px] w-[300px] px-[16px] py-[8px] flex items-center">
                     <input
                       type="email"
                       placeholder="이메일 주소"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, 'email')}
-                      className="bg-transparent text-[13px] text-black outline-none w-full placeholder-[#a7a7a7]"
+                      className="w-full bg-transparent outline-none text-[14px] text-black placeholder-[#a7a7a7]"
                     />
                   </div>
 
                   {/* 비밀번호 입력 */}
-                  <div className="bg-[#ededed] rounded-[5px] p-[12px] mb-[30px] w-[300px]">
+                  <div className="bg-[#ededed] rounded-[5px] h-[40px] w-[300px] px-[16px] py-[8px] flex items-center">
                     <input
                       type="password"
                       placeholder="비밀번호"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, 'email')}
-                      className="bg-transparent text-[13px] text-black outline-none w-full placeholder-[#a7a7a7]"
+                      className="w-full bg-transparent outline-none text-[14px] text-black placeholder-[#a7a7a7]"
                     />
                   </div>
 
                   {/* 로그인 버튼 */}
                   <button
                     onClick={handleEmailLogin}
-                    className="bg-[#f0f0f0] h-[60px] rounded-[15px] w-[220px] hover:bg-[#e0e0e0] transition-colors cursor-pointer font-bold text-[20px] text-neutral-700"
+                    className="bg-[#f0f0f0] rounded-[15px] h-[60px] w-[220px] flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer"
                   >
-                    로그인
+                    <span className="text-[20px] font-bold text-neutral-700">로그인</span>
                   </button>
                 </>
               )}

@@ -11,6 +11,7 @@ import LawyerListContent from './LawyerListContent';  // ✅ 변호사 목록 �
 import DictionaryDetailContent from './DictionaryDetailContent';  // ✅ 용어사전 상세 컴포넌트 import
 import LawyerProfileContent from './LawyerProfileContent';  // ✅ 변호사 프로필 컴포넌트 import
 import LawyerProfileEditContent from './LawyerProfileEditContent';  // ✅ 변호사 프로필 수정 컴포넌트 import
+import { demoCaseData } from '../data/demoData';  // ✅ 사건 데이터 import
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 const imgImage12 = "/assets/Logout_Image.png";
@@ -128,41 +129,25 @@ export default function LawmatePage() {
         <div className="">
           <div className="flex items-center justify-between my-[5px]">
             <h3 className="text-[15px] font-bold text-[#03345a] pl-[30px]">최근사건 기록</h3>
-            <span className="text-[15px] font-bold text-[#03345a] pr-[30px]">3/5</span>
+            <span className="text-[15px] font-bold text-[#03345a] pr-[30px]">{demoCaseData.length}/5</span>
           </div>
           <div className="w-[150px] h-[3px] bg-[#d9d9d9]" />
 
           {/* 사건 목록 */}
           <div className="space-y-[0px]">
-            <div className="py-[14.5px]">
-              <div className="mb-[8px]">
-                <span className="text-[16px] font-bold text-black pl-[30px]">사건1.</span>
-              </div>
-              <div className="pl-[20px]">
-                <p className="text-[12px] text-black leading-[1.5] pl-[30px]">'부당해고 구제제도' 개선 입법예고…"</p>
-              </div>
-            </div>
-            <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
-
-            <div className="py-[14.5px]">
-              <div className="mb-[8px]">
-                <span className="text-[16px] font-bold text-black pl-[30px]">사건2.</span>
-              </div>
-              <div className="pl-[20px]">
-                <p className="text-[12px] text-black leading-[1.5] pl-[30px]">'부당해고 구제제도' 개선 입법예고…"</p>
-              </div>
-            </div>
-            <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
-
-            <div className="py-[14.5px]">
-              <div className="mb-[8px]">
-                <span className="text-[16px] font-bold text-black pl-[30px]">사건3.</span>
-              </div>
-              <div className="pl-[20px]">
-                <p className="text-[12px] text-black leading-[1.5] pl-[30px]">'부당해고 구제제도' 개선 입법예고…"</p>
-              </div>
-            </div>
-            <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
+            {demoCaseData.map((caseItem, index) => (
+              <React.Fragment key={index}>
+                <div className="py-[14.5px] pr-[15px]">
+                  <div className="mb-[8px]">
+                    <span className="text-[16px] font-bold text-black pl-[30px]">사건{index + 1}.</span>
+                  </div>
+                  <div className="pl-[20px]">
+                    <p className="text-[12px] text-black leading-[1.5] pl-[30px]">{caseItem.title}</p>
+                  </div>
+                </div>
+                <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </div>
