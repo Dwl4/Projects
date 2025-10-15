@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import { demoFAQData } from '../data/demoData';
+import LoginRequiredModal from './LoginRequiredModal';
+import DirectInquiryContent from './DirectInquiryContent';
+
+export default function CustomerSupportContent() {
+  const [currentPageGroup, setCurrentPageGroup] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showDirectInquiry, setShowDirectInquiry] = useState(false);
+
+  useEffect(() => {
+    // localStorage에서 로그인 상태 확인
+    const checkLoginStatus = () => {
+      const loginStatus = localStorage.getItem('isLoggedIn');
+      setIsLoggedIn(loginStatus === 'true');
+    };
+
+    // 초기 상태 확인
+    checkLoginStatus();
+
+    // storage 이벤트 리스너 추가 (다른 탭에서의 변화 감지)
+    window.addEventListener('storage', checkLoginStatus);
+
+    // 현재 탭에서의 localStorage 변화를 감지하기 위한 커스텀 이벤트
+    window.addEventListener('localStorageChange', checkLoginStatus);
+
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+      window.removeEventListener('localStorageChange', checkLoginStatus);
+    };
+  }, []);
+
+  const getPageNumbers = () => {
+    const start = currentPageGroup * 9 + 1;
+    return Array.from({ length: 9 }, (_, i) => start + i);
+  };
+
+  const handlePrevious = () => {
+    if (currentPageGroup > 0) {
+      setCurrentPageGroup(currentPageGroup - 1);
+    }
+  };
+
+  const handleNext = () => {
+    setCurrentPageGroup(currentPageGroup + 1);
+  };
+
+  const handleDirectInquiry = () => {
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+    } else {
+      // 로그인된 상태에서 직접 문의 페이지로 이동
+      setShowDirectInquiry(true);
+    }
+  };
+
+  // 직접 문의 페이지를 보여줄 때
+  if (showDirectInquiry) {
+    return <DirectInquiryContent />;
+  }
+
+  return (
+    <>
+
+      <div className="w-[1020px]">
+        {/* 고객지원 제목 */}
+        <div className="bg-white box-border flex flex-col h-[100px] items-start overflow-clip p-[10px] w-full">
+          <p className="font-bold text-[30px] text-black text-center tracking-[-0.33px]">
+            고객지원
+          </p>
+        </div>
+
+        {/* 자주 묻는 질문 섹션 */}
+        <div className="bg-white box-border flex h-[100px] items-center justify-center pb-[30px] pt-0 px-[50px] w-full">
+          <p className="font-semibold text-[30px] text-black text-center tracking-[-0.33px]">
+            자주 묻는 질문 (FAQ)
+          </p>
+        </div>
+
+        {/* 구분선 */}
+        <div className="bg-[#d9d9d9] h-[3px] w-[860px] mx-auto" />
+
+        {/* FAQ 질문들 */}
+        <div className="box-border flex flex-col gap-[15px] items-start justify-center px-[100px] py-[10px] w-full">
+          {demoFAQData.map((faq) => (
+            <div key={faq.id} className="flex flex-col items-start overflow-clip w-full">
+              <div className="box-border flex font-semibold gap-[10px] items-center px-[50px] py-0 text-[20px] text-black text-center tracking-[-0.22px] w-full">
+                <p className="font-semibold">Q</p>
+                <p className="font-semibold">{faq.question}</p>
+              </div>
+              <div className="box-border flex gap-[10px] items-start overflow-clip pl-[100px] pr-[50px] py-0 w-full">
+                <div className="font-normal text-[#787878] text-[15px] tracking-[-0.165px] leading-[1.5]">
+                  <p>{faq.answer}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 페이지네이션 */}
+        <div className="px-[60px] h-[200px] flex items-center justify-center">
+          <div className="flex items-center gap-[20px] w-[320px]">
+            {currentPageGroup > 0 && (
+              <button
+                onClick={handlePrevious}
+                className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
+              >
+                이전
+              </button>
+            )}
+            <div className="flex items-center justify-between w-[200px] text-[10px] text-black font-bold">
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  className={`${page === 1 ? 'underline' : ''} hover:underline transition-all`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleNext}
+              className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
+            >
+              다음
+            </button>
+          </div>
+        </div>
+
+        {/* 직접 문의하기 섹션 */}
+        <div className="bg-white box-border flex items-center justify-between px-[150px] py-0 w-full">
+          <p className="font-bold text-[25px] text-black tracking-[-0.275px]">
+            문제가 해결되지 않으셨나요?
+          </p>
+          <p
+            className="font-bold text-[#95b1d4] text-[20px] tracking-[-0.22px] cursor-pointer hover:underline"
+            onClick={handleDirectInquiry}
+          >
+            직접 문의하기 →
+          </p>
+        </div>
+      </div>
+
+      {/* 로그인 필요 모달 */}
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
+    </>
+  );
+}

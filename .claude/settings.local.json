@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(npm start)",
+      "Bash(env)",
+      "Read(//c/c/Users/leedo/Project/**)",
+      "Bash(PORT=3001 npm start)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(git checkout:*)",
+      "Read(//c/tmp/**)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(npx:*)",
+      "Bash(npm search:*)",
+      "Bash(where npx)",
+      "Read(//c/Users/leedo/**)",
+      "Bash(cat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout:*)",
+      "Bash(python:*)",
+      "Bash(cmd //c taskkill:*)",
+      "Bash(cmd /c taskkill:*)",
+      "Bash(where claude)",
+      "Bash(claude mcp:*)",
+      "Bash(dir:*)",
+      "Bash(cmd /c:*)",
+      "Bash(rm:*)",
+      "Bash(npm --version)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

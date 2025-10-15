@@ -1,0 +1,53 @@
+import React from 'react';
+import { demoInquiryDetail } from '../data/demoData';
+
+export default function InquiryDetailContent({ onBackClick }) {
+  return (
+    <>
+
+      <div className="w-[1020px]">
+        {/* 고객지원 제목 */}
+        <div className="bg-white box-border flex h-[100px] items-start overflow-clip pl-[10px] pr-[20px] py-[10px] w-[1020px]">
+          <p className="font-bold text-[30px] text-black text-center tracking-[-0.33px]">
+            고객지원
+          </p>
+        </div>
+
+        {/* 뒤로가기와 문의 정보 */}
+        <div className="box-border flex h-[50px] items-center justify-between overflow-clip px-[100px] py-0 w-full">
+          <p
+            className="font-normal text-[#4b7dbc] text-[15px] tracking-[-0.165px] cursor-pointer hover:underline w-[73px]"
+            onClick={onBackClick}
+          >
+            &lt; 전체 문의
+          </p>
+          <div className="flex font-normal items-center justify-between text-[15px] text-black tracking-[-0.165px] w-[400px]">
+            <p>#{demoInquiryDetail.inquiryNumber}</p>
+            <p>{demoInquiryDetail.date}</p>
+            <p>{demoInquiryDetail.status}</p>
+          </div>
+        </div>
+
+        {/* 문의 제목과 내용 */}
+        <div className="box-border flex flex-col gap-[10px] items-start justify-center px-[110px] py-[20px] text-black w-[1020px]">
+          <p className="font-bold text-[20px] tracking-[-0.22px]">
+            {demoInquiryDetail.title}
+          </p>
+          <p className="font-normal text-[15px] tracking-[-0.165px] w-full">
+            {demoInquiryDetail.content}
+          </p>
+        </div>
+
+        {/* 구분선 */}
+        <div className="bg-[#d9d9d9] h-[3px] w-[860px] mx-auto" />
+
+        {/* 답변 내용 */}
+        <div className="box-border flex flex-col items-start px-[100px] py-[20px] w-[1020px]">
+          <div className="font-normal text-[#787878] text-[15px] tracking-[-0.165px] w-full leading-[1.5]">
+            <p className="mb-0">{demoInquiryDetail.answer}</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
