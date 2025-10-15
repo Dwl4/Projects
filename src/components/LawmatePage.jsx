@@ -70,7 +70,13 @@ export default function LawmatePage() {
   }, [location.pathname]);
 
   // 로그인된 사용자를 위한 사이드바 컴포넌트
-  const LoggedInSidebar = () => (
+  const LoggedInSidebar = () => {
+    // 변호사 여부 확인
+    const isLawyer = localStorage.getItem('isLawyer') === 'true';
+    // 변호사면 빈 배열, 일반 사용자면 demoCaseData 사용
+    const caseData = isLawyer ? [] : demoCaseData;
+
+    return (
     <>
       {/* 로그인된 사용자 프로필 섹션 */}
       <aside className="w-[300px] bg-[#95b1d4] h-[300px] flex flex-col items-center justify-center p-[30px]">
@@ -129,30 +135,37 @@ export default function LawmatePage() {
         <div className="">
           <div className="flex items-center justify-between my-[5px]">
             <h3 className="text-[15px] font-bold text-[#03345a] pl-[30px]">최근사건 기록</h3>
-            <span className="text-[15px] font-bold text-[#03345a] pr-[30px]">{demoCaseData.length}/5</span>
+            <span className="text-[15px] font-bold text-[#03345a] pr-[30px]">{caseData.length}/5</span>
           </div>
           <div className="w-[150px] h-[3px] bg-[#d9d9d9]" />
 
           {/* 사건 목록 */}
           <div className="space-y-[0px]">
-            {demoCaseData.map((caseItem, index) => (
-              <React.Fragment key={index}>
-                <div className="py-[14.5px] pr-[15px]">
-                  <div className="mb-[8px]">
-                    <span className="text-[16px] font-bold text-black pl-[30px]">사건{index + 1}.</span>
+            {caseData.length > 0 ? (
+              caseData.map((caseItem, index) => (
+                <React.Fragment key={index}>
+                  <div className="py-[14.5px] pr-[15px]">
+                    <div className="mb-[8px]">
+                      <span className="text-[16px] font-bold text-black pl-[30px]">사건{index + 1}.</span>
+                    </div>
+                    <div className="pl-[20px]">
+                      <p className="text-[12px] text-black leading-[1.5] pl-[30px]">{caseItem.title}</p>
+                    </div>
                   </div>
-                  <div className="pl-[20px]">
-                    <p className="text-[12px] text-black leading-[1.5] pl-[30px]">{caseItem.title}</p>
-                  </div>
-                </div>
-                <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
-              </React.Fragment>
-            ))}
+                  <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
+                </React.Fragment>
+              ))
+            ) : (
+              <div className="py-[20px] px-[30px]">
+                <p className="text-[13px] text-[#787878] font-bold text-center">최근 사건 기록이 존재하지 않습니다.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   // 로그인되지 않은 사용자를 위한 사이드바 컴포넌트
   const GuestSidebar = () => (
@@ -225,7 +238,9 @@ export default function LawmatePage() {
               커뮤니티
             </div>
             <div
-              className="text-center cursor-pointer hover:text-gray-200"
+              className={`text-center cursor-pointer hover:text-gray-200 ${
+                activeSection === "lawyer-list" || activeSection === "lawyer-profile" || activeSection === "lawyer-profile-edit" ? "text-gray-800" : "text-white"
+              }`}
               onClick={() => navigate('/lawyer-list')}
             >
               변호사

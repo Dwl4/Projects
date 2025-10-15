@@ -21,7 +21,47 @@ export default function ProfileEditPage() {
   };
 
   const handleSave = () => {
-    console.log('저장하기 클릭');
+    // 비밀번호 확인
+    if (newPassword && newPassword !== confirmPassword) {
+      alert('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    // localStorage에서 현재 사용자 정보 가져오기
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+    // 업데이트할 정보 준비
+    const updatedUser = {
+      ...currentUser,
+      nickname: nickname,
+      address: address
+    };
+
+    // 비밀번호가 입력되었으면 업데이트
+    if (newPassword) {
+      updatedUser.password = newPassword;
+    }
+
+    // localStorage에 저장
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    localStorage.setItem('userName', nickname); // 사이드바 업데이트용
+
+    // demoUsers 배열도 업데이트 (로그인 검증용)
+    const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
+    const userIndex = users.findIndex(u => u.email === currentUser.email);
+    if (userIndex !== -1) {
+      users[userIndex] = updatedUser;
+      localStorage.setItem('demoUsers', JSON.stringify(users));
+    }
+
+    alert('정보가 저장되었습니다.');
+
+    // 페이지 새로고침하여 사이드바 업데이트 반영
+    window.location.reload();
+
+    // 비밀번호 입력 필드 초기화
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   const openMapSearch = () => {

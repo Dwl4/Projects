@@ -102,19 +102,19 @@ export function DictionaryContent() {
         {/* 페이지네이션 */}
         <div className="h-[200px] flex items-center justify-center">
           <div className="flex items-center gap-[20px] w-[320px]">
-            <button
-              onClick={handlePrevious}
-              className={`w-[40px] h-[25px] flex items-center justify-center text-[10px] font-medium text-black ${
-                currentPageGroup > 0 ? 'cursor-pointer' : 'invisible'
-              }`}
-            >
-              이전
-            </button>
-            <div className="flex items-center justify-between w-[200px] h-[15px] text-[10px] text-black font-medium gap-[13.875px]">
-              {getPageNumbers().map((page, index) => (
+            {currentPageGroup > 0 && (
+              <button
+                onClick={handlePrevious}
+                className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
+              >
+                이전
+              </button>
+            )}
+            <div className="flex items-center justify-between w-[200px] text-[10px] text-black font-bold">
+              {getPageNumbers().map((page) => (
                 <button
                   key={page}
-                  className={`${page === 11 ? 'underline font-bold' : ''} hover:underline transition-all`}
+                  className={`${page === 11 ? 'underline' : ''} hover:underline transition-all`}
                 >
                   {page}
                 </button>
@@ -122,7 +122,7 @@ export function DictionaryContent() {
             </div>
             <button
               onClick={handleNext}
-              className="w-[40px] h-[25px] flex items-center justify-center text-[10px] font-medium text-black cursor-pointer"
+              className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
             >
               다음
             </button>

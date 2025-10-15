@@ -32,8 +32,16 @@ export default function LoginPage() {
       return;
     }
 
-    // demoLawyerUsers에서 변호사 정보 확인
-    const lawyer = demoLawyerUsers.find(l => l.email === email && l.password === password);
+    // localStorage에서 변호사 목록 가져오기 (없으면 demoData 사용)
+    let lawyers = JSON.parse(localStorage.getItem('demoLawyerUsers') || 'null');
+    if (!lawyers) {
+      // 처음 로드 시 demoLawyerUsers를 localStorage에 저장
+      localStorage.setItem('demoLawyerUsers', JSON.stringify(demoLawyerUsers));
+      lawyers = demoLawyerUsers;
+    }
+
+    // 변호사 정보 확인
+    const lawyer = lawyers.find(l => l.email === email && l.password === password);
 
     if (lawyer) {
       // 로그인 성공
@@ -55,8 +63,16 @@ export default function LoginPage() {
       return;
     }
 
-    // demoUsers에서 사용자 정보 확인
-    const user = demoUsers.find(u => u.email === email && u.password === password);
+    // localStorage에서 사용자 목록 가져오기 (없으면 demoData 사용)
+    let users = JSON.parse(localStorage.getItem('demoUsers') || 'null');
+    if (!users) {
+      // 처음 로드 시 demoUsers를 localStorage에 저장
+      localStorage.setItem('demoUsers', JSON.stringify(demoUsers));
+      users = demoUsers;
+    }
+
+    // 사용자 정보 확인
+    const user = users.find(u => u.email === email && u.password === password);
 
     if (user) {
       // 로그인 성공
@@ -117,7 +133,7 @@ export default function LoginPage() {
                   </div>
 
                   {/* 사용자 이미지 */}
-                  <div className="mb-[10px] flex justify-center">
+                  <div className="flex justify-center h-[180px] w-[380px] px-[100px]">
                     <div
                       className="w-[180px] h-[180px] bg-center bg-cover bg-no-repeat"
                       style={{ backgroundImage: `url('${imgImage12}')` }}
@@ -149,12 +165,10 @@ export default function LoginPage() {
 
                   {/* 사용자 이미지 */}
                   <div className="flex justify-center h-[180px] w-[380px] px-[100px]">
-                    <div className="relative w-[180px] h-[180px]">
-                      <div
-                        className="w-[180px] h-[180px] bg-center bg-cover bg-no-repeat"
-                        style={{ backgroundImage: `url('${imgImage12}')` }}
-                      />
-                    </div>
+                    <div
+                      className="w-[180px] h-[180px] bg-center bg-cover bg-no-repeat"
+                      style={{ backgroundImage: `url('${imgImage12}')` }}
+                    />
                   </div>
 
                   {/* 이메일 입력 */}

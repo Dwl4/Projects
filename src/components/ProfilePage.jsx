@@ -10,7 +10,22 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeTab, setActiveTab] = useState('사건');
-  const [favorites, setFavorites] = useState(new Set([1, 2, 3, 4, 5, 6])); // 모든 변호사 즐겨찾기 활성화
+
+  // localStorage에서 현재 사용자 정보 가져오기
+  const getCurrentUser = () => {
+    const stored = localStorage.getItem('currentUser');
+    return stored ? JSON.parse(stored) : demoProfileUser;
+  };
+
+  const [currentUser, setCurrentUser] = useState(getCurrentUser());
+
+  // localStorage에서 즐겨찾기 불러오기
+  const getFavoritesFromStorage = () => {
+    const stored = localStorage.getItem('lawyerFavorites');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  };
+
+  const [favorites, setFavorites] = useState(getFavoritesFromStorage());
   const [favoriteOrder, setFavoriteOrder] = useState([]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +34,50 @@ export default function ProfilePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [editedNickname, setEditedNickname] = useState(currentUser.nickname);
 
+  const handleSaveProfile = () => {
+    // 비밀번호 확인
+    if (newPassword && newPassword !== confirmPassword) {
+      alert('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    // localStorage에서 현재 사용자 정보 가져오기
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+    // 업데이트할 정보 준비
+    const updatedUser = {
+      ...currentUser,
+      nickname: editedNickname
+    };
+
+    // 비밀번호가 입력되었으면 업데이트
+    if (newPassword) {
+      updatedUser.password = newPassword;
+    }
+
+    // localStorage에 저장
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    localStorage.setItem('userName', editedNickname); // 사이드바 업데이트용
+
+    // demoUsers 배열도 업데이트 (로그인 검증용)
+    const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
+    const userIndex = users.findIndex(u => u.email === currentUser.email);
+    if (userIndex !== -1) {
+      users[userIndex] = updatedUser;
+      localStorage.setItem('demoUsers', JSON.stringify(users));
+    }
+
+    alert('정보가 저장되었습니다.');
+
+    // 비밀번호 입력 필드 초기화
+    setNewPassword('');
+    setConfirmPassword('');
+
+    // 페이지 새로고침하여 사이드바 업데이트 반영
+    window.location.reload();
+  };
 
   const toggleFavorite = (lawyerId) => {
     setFavorites(prev => {
@@ -33,6 +91,8 @@ export default function ProfilePage() {
         // 즐겨찾기 추가시 가장 앞으로 이동
         setFavoriteOrder(prevOrder => [lawyerId, ...prevOrder.filter(id => id !== lawyerId)]);
       }
+      // localStorage에 저장
+      localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
       return newFavorites;
     });
   };
@@ -81,7 +141,7 @@ export default function ProfilePage() {
               {/* 환영 문구 */}
               <div className="flex flex-col items-start justify-center w-full">
                 <div className="flex font-bold items-center text-[30px] text-black">
-                  <span>{demoProfileUser.nickname}</span>
+                  <span>{currentUser.nickname}</span>
                   <span>님 환영합니다</span>
                 </div>
                 <span className="font-light text-[20px] text-black">마이페이지에서 회원정보를 관리하실 수 있습니다.</span>
@@ -123,8 +183,8 @@ export default function ProfilePage() {
                   {/* 내용1 */}
                   <div className="flex flex-col gap-[15px] flex-1 h-full items-start py-[30px]">
                     <div className="font-normal text-[13px] text-black whitespace-pre-line">
-                      {demoProfileUser.name}<br /><br />
-                      {demoProfileUser.email}
+                      {currentUser.name}<br /><br />
+                      {currentUser.email}
                     </div>
                   </div>
 
@@ -139,8 +199,8 @@ export default function ProfilePage() {
                   {/* 내용2 */}
                   <div className="flex flex-col gap-[10px] flex-1 h-full items-start py-[30px] relative">
                     <div className="font-normal text-[13px] text-black whitespace-pre-line">
-                      {demoProfileUser.nickname}<br /><br />
-                      {demoProfileUser.address}
+                      {currentUser.nickname}<br /><br />
+                      {currentUser.address}
                     </div>
                     <div className="absolute bottom-[30px] right-0">
                       <div
@@ -320,7 +380,15 @@ export default function ProfilePage() {
                 // 수정 모드 - 원본 구조와 완전히 동일하게 유지
                 <>
               {/* 프로필 박스 */}
-              <div className="bg-[#e8e8e8] flex h-[250px] items-center justify-between rounded-[10px] shadow-[2px_2px_5px_0px_rgba(0,0,0,0.25)] w-full">
+              <div className="bg-[#e8e8e8] flex h-[250px] items-center justify-between rounded-[10px] shadow-[2px_2px_5px_0px_rgba(0,0,0,0.25)] w-full relative">
+                {/* 회원 탈퇴 버튼 - 오른쪽 위 */}
+                <button
+                  onClick={handleWithdraw}
+                  className="absolute top-[10px] right-[30px] text-[13px] font-bold text-[#ff3333] hover:underline cursor-pointer"
+                >
+                  회원 탈퇴
+                </button>
+
                 {/* 이미지 박스 */}
                 <div className="flex flex-col gap-[20px] h-full items-center justify-center px-[45px] py-[20px]">
                   <div className="relative w-[150px] h-[150px]">
@@ -354,8 +422,8 @@ export default function ProfilePage() {
                   {/* 내용1 */}
                   <div className="flex flex-col gap-[15px] flex-1 h-full items-start py-[30px]">
                     <div className="font-normal text-[13px] text-black whitespace-pre-line">
-                      {demoProfileUser.name}<br /><br />
-                      {demoProfileUser.email}
+                      {currentUser.name}<br /><br />
+                      {currentUser.email}
                     </div>
                     <div className="relative">
                       <input
@@ -423,7 +491,8 @@ export default function ProfilePage() {
                   <div className="flex flex-col gap-[10px] flex-1 h-full items-start py-[30px] relative">
                     <input
                       type="text"
-                      defaultValue={demoProfileUser.nickname}
+                      value={editedNickname}
+                      onChange={(e) => setEditedNickname(e.target.value)}
                       className="bg-white h-[20px] w-[130px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
                     />
                     <div className="mb-[10px]">
@@ -436,16 +505,16 @@ export default function ProfilePage() {
                     </div>
                     <div className="absolute bottom-[30px] right-0 flex gap-[10px]">
                       <div
-                        className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[2px] rounded-[5px] cursor-pointer hover:opacity-80"
+                        className="bg-white flex items-center justify-center px-[10px] py-[2px] rounded-[5px] cursor-pointer hover:opacity-80 shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)]"
                         onClick={() => setIsEditMode(false)}
                       >
                         <span className="font-normal text-[13px] text-black">돌아가기</span>
                       </div>
                       <div
-                        className="bg-white px-[13px] py-[2px] shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)] cursor-pointer hover:opacity-80"
-                        onClick={handleWithdraw}
+                        className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[2px] rounded-[5px] cursor-pointer hover:opacity-80"
+                        onClick={handleSaveProfile}
                       >
-                        <span className="font-normal text-[13px] text-black">회원 탈퇴</span>
+                        <span className="font-normal text-[13px] text-black">저장하기</span>
                       </div>
                     </div>
                   </div>

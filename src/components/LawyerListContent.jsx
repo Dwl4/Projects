@@ -4,15 +4,28 @@ import { demoLawyerProfiles } from '../data/demoData';
 
 const LawyerListContent = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [favorites, setFavorites] = useState([]);
   const navigate = useNavigate();
 
+  // localStorage에서 즐겨찾기 불러오기
+  const getFavoritesFromStorage = () => {
+    const stored = localStorage.getItem('lawyerFavorites');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  };
+
+  const [favorites, setFavorites] = useState(getFavoritesFromStorage());
+
   const toggleFavorite = (lawyerId) => {
-    setFavorites(prev =>
-      prev.includes(lawyerId)
-        ? prev.filter(id => id !== lawyerId)
-        : [...prev, lawyerId]
-    );
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(lawyerId)) {
+        newFavorites.delete(lawyerId);
+      } else {
+        newFavorites.add(lawyerId);
+      }
+      // localStorage에 저장
+      localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
+      return newFavorites;
+    });
   };
 
   return (
@@ -125,16 +138,19 @@ const LawyerListContent = () => {
               <div className="flex items-center justify-between px-[10px] flex-grow">
                 <button
                   onClick={() => toggleFavorite(lawyer.id)}
-                  className="w-[25px] h-[25px] bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80 transition-opacity"
+                  className="size-[25px] bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80 transition-all"
                   style={{
-                    backgroundImage: `url('/assets/favorite.png')`
+                    backgroundImage: `url('/assets/favorite.png')`,
+                    filter: favorites.has(lawyer.id)
+                      ? 'none'
+                      : 'grayscale(100%)'
                   }}
                 />
                 <button
                   className="text-[10px] font-bold text-black cursor-pointer hover:underline"
                   onClick={() => navigate('/lawyer-profile')}
                 >
-                  상담하러 가기 →
+                  프로필 확인하기 →
                 </button>
               </div>
             </div>
