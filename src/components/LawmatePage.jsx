@@ -239,7 +239,7 @@ export default function LawmatePage() {
             </div>
             <div
               className={`text-center cursor-pointer hover:text-gray-200 ${
-                activeSection === "lawyer-list" || activeSection === "lawyer-profile" || activeSection === "lawyer-profile-edit" ? "text-gray-800" : "text-white"
+                activeSection === "lawyer-list" ? "text-gray-800" : "text-white"
               }`}
               onClick={() => navigate('/lawyer-list')}
             >
