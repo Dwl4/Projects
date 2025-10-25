@@ -30,7 +30,8 @@
       "Bash(dir:*)",
       "Bash(cmd /c:*)",
       "Bash(rm:*)",
-      "Bash(npm --version)"
+      "Bash(npm --version)",
+      "Bash(PORT=4000 npm start)"
     ],
     "deny": [],
     "ask": []
