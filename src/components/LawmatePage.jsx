@@ -26,6 +26,37 @@ export default function LawmatePage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 🔹 홈에서 검색 시 세션 생성 후 이동
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    try {
+      console.log('🔵 [홈] 세션 생성 시작', { query: searchQuery });
+
+      const title = searchQuery.length > 50
+        ? searchQuery.substring(0, 50) + '...'
+        : searchQuery;
+
+      // 세션 생성 (initial_query 없이, 빈 문자열로)
+      const session = await aiChatService.createSession(title, '');
+      console.log('✅ [홈] 세션 생성 완료 (빈 세션)', session);
+
+      // 생성된 세션 UUID와 첫 질문을 함께 채팅 페이지로 이동
+      navigate('/search-results', {
+        state: {
+          sessionUuid: session.session_uuid,
+          firstQuestion: searchQuery  // 첫 질문으로 사용
+        }
+      });
+
+      // 검색창 초기화
+      setSearchQuery('');
+    } catch (error) {
+      console.error('❌ [홈] 세션 생성 실패:', error);
+      alert('세션 생성에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
   // URL 경로에서 현재 섹션 결정
   const getActiveSectionFromPath = () => {
     const path = location.pathname;
@@ -283,11 +314,11 @@ export default function LawmatePage() {
     </>
   );
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen bg-white overflow-hidden">
       {/* 1600px 컨테이너, 중앙 정렬 */}
-      <div className="w-[1320px] mx-auto">
+      <div className="w-[1320px] mx-auto h-full flex flex-col">
         {/* 네비게이션 */}
-        <header className="bg-[#9ec3e5] flex items-center justify-between pl-[30px] pr-[100px] py-[10px] h-20">
+        <header className="flex-shrink-0 bg-[#9ec3e5] flex items-center justify-between pl-[30px] pr-[100px] py-[10px] h-20">
           <div
             className="w-[238px] h-20 bg-left bg-no-repeat bg-cover"
             style={{ backgroundImage: `url('${imgLawMatrLogo}')`,
@@ -348,15 +379,15 @@ export default function LawmatePage() {
         </header>
 
         {/* 메인 컨텐츠 */}
-        <main className="min-h-[1000px] relative bg-white flex items-stretch">
-          <div className="flex">
+        <main className="flex-1 relative bg-white flex items-stretch overflow-hidden">
+          <div className="flex w-full h-full">
             {/* 왼쪽 사이드바 - 로그인 상태에 따라 다른 컴포넌트 렌더링 */}
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-shrink-0">
               {isLoggedIn ? <LoggedInSidebar /> : <GuestSidebar />}
             </div>
 
             {/* 중앙 메인 컨텐츠 */}
-            <div className="w-[1020px] h-auto">
+            <div className="w-[1020px] h-full overflow-y-auto">
               {/* 상단 회색 바*/}
               <div className="w-full h-[10px] bg-[#d9d9d9]" />
               {activeSection === "home" && (
@@ -388,9 +419,9 @@ export default function LawmatePage() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) => {
+                        onKeyPress={async (e) => {
                           if (e.key === 'Enter' && searchQuery.trim()) {
-                            navigate('/search-results', { state: { initialQuery: searchQuery } });
+                            await handleSearch();
                           }
                         }}
                         placeholder="궁금한 사항을 물어봐 주세요!"
@@ -403,9 +434,9 @@ export default function LawmatePage() {
                         <div
                           className="w-10 h-10 bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80"
                           style={{ backgroundImage: `url('${imgMagnifyingLens}')` }}
-                          onClick={() => {
+                          onClick={async () => {
                             if (searchQuery.trim()) {
-                              navigate('/search-results', { state: { initialQuery: searchQuery } });
+                              await handleSearch();
                             }
                           }}
                         />

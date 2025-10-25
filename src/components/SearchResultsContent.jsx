@@ -6,14 +6,16 @@ const imgMagnifyingLens = "/assets/Search.png";
 
 function SearchResultsContent() {
   const location = useLocation();
-  const initialQuery = location.state?.initialQuery || '';
+  const receivedSessionUuid = location.state?.sessionUuid || null;  // 🔹 홈에서 받은 UUID
+  const firstQuestion = location.state?.firstQuestion || '';  // 🔹 홈에서 입력한 첫 질문
 
-  const [sessionUuid, setSessionUuid] = useState(null);
+  const [sessionUuid, setSessionUuid] = useState(receivedSessionUuid);  // 🔹 받은 UUID로 초기화
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
+  const initializedRef = useRef(false);  // 🔹 중복 실행 방지
 
   // 자동 스크롤
   const scrollToBottom = () => {
@@ -24,59 +26,91 @@ function SearchResultsContent() {
     scrollToBottom();
   }, [messages]);
 
-  // 1️⃣ 컴포넌트 초기화 - 세션 생성
+  // 1️⃣ 컴포넌트 초기화 - 첫 질문 전송 (한 번만 실행)
   useEffect(() => {
-    // 이미 세션이 있으면 실행하지 않음 (중복 방지)
-    if (!sessionUuid) {
+    if (initializedRef.current) return;  // 이미 실행되었으면 중단
+    initializedRef.current = true;
+
+    if (receivedSessionUuid && firstQuestion) {
+      // 홈에서 받은 세션 UUID와 첫 질문으로 대화 시작
+      sendFirstQuestion(receivedSessionUuid, firstQuestion);
+    } else if (receivedSessionUuid) {
+      // 세션 UUID만 있고 질문이 없으면 메시지 로드
+      loadMessages(receivedSessionUuid);
+    } else {
+      // 직접 접근한 경우 (드물지만) 새 세션 생성
       initializeSession();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 2️⃣ 세션 생성
-  const initializeSession = async () => {
+  // 2️⃣ 첫 질문 전송 (홈에서 넘어온 경우)
+  const sendFirstQuestion = async (uuid, question) => {
     try {
-      console.log('🔵 세션 생성 시작', { initialQuery });
+      console.log('🔵 [채팅] 첫 질문 전송', { sessionUuid: uuid, question });
+      setLoading(true);
 
-      // initialQuery가 있으면 그것을 title과 initial_query로 사용
-      const title = initialQuery
-        ? (initialQuery.length > 50 ? initialQuery.substring(0, 50) + '...' : initialQuery)
-        : 'AI 법률 상담';
+      // 사용자 메시지 즉시 표시
+      setMessages([
+        {
+          id: `temp_${Date.now()}`,
+          role: 'user',
+          content: question,
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
-      // API 호출: POST /ai-chat/sessions
-      // title과 initial_query 모두 필수로 전달
-      const session = await aiChatService.createSession(
-        title,
-        initialQuery || ''  // 빈 문자열이라도 전달
-      );
+      // AI에게 첫 질문 전송
+      const response = await aiChatService.chatWithAI(uuid, question);
+      console.log('✅ [채팅] AI 응답 받음', response);
 
-      console.log('✅ 세션 생성 성공', session);
+      // 서버에서 전체 메시지 목록 다시 가져오기 (동기화)
+      console.log('🔵 [채팅] 메시지 목록 다시 조회 (동기화)');
+      const messagesData = await aiChatService.getSessionMessages(uuid);
+      console.log('✅ [채팅] 메시지 목록 받음', messagesData);
 
-      // UUID를 state에 저장
-      setSessionUuid(session.session_uuid);
-      console.log('💾 저장된 sessionUuid:', session.session_uuid);
-
-      // initialQuery가 있으면 메시지 목록에 추가 (서버에서 이미 처리됨)
-      if (initialQuery) {
-        // 세션 메시지 목록 조회
-        setLoading(true);
-        try {
-          console.log('🔵 세션 메시지 조회', { sessionUuid: session.session_uuid });
-          const messagesData = await aiChatService.getSessionMessages(session.session_uuid);
-          console.log('✅ 메시지 목록 받음', messagesData);
-
-          // 메시지 목록 설정
-          if (messagesData.items && messagesData.items.length > 0) {
-            setMessages(messagesData.items);
-          }
-        } catch (err) {
-          console.error('메시지 조회 실패:', err);
-          setError('메시지를 불러오는데 실패했습니다.');
-        } finally {
-          setLoading(false);
-        }
+      if (messagesData.items && messagesData.items.length > 0) {
+        setMessages(messagesData.items);
       }
     } catch (err) {
-      console.error('세션 생성 실패:', err);
+      console.error('❌ [채팅] 첫 질문 전송 실패:', err);
+      setError('첫 질문 전송에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3️⃣ 세션 메시지 로드 (세션만 받은 경우)
+  const loadMessages = async (uuid) => {
+    try {
+      console.log('🔵 [채팅] 기존 세션 메시지 로드', { sessionUuid: uuid });
+      setLoading(true);
+
+      const messagesData = await aiChatService.getSessionMessages(uuid);
+      console.log('✅ [채팅] 메시지 목록 받음', messagesData);
+
+      if (messagesData.items && messagesData.items.length > 0) {
+        setMessages(messagesData.items);
+      }
+    } catch (err) {
+      console.error('❌ [채팅] 메시지 조회 실패:', err);
+      setError('메시지를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4️⃣ 세션 생성 (직접 접근 시에만 사용)
+  const initializeSession = async () => {
+    try {
+      console.log('🔵 [채팅] 새 세션 생성 시작 (직접 접근)');
+
+      const session = await aiChatService.createSession('AI 법률 상담', '');
+      console.log('✅ [채팅] 세션 생성 성공', session);
+
+      setSessionUuid(session.session_uuid);
+      console.log('💾 [채팅] 저장된 sessionUuid:', session.session_uuid);
+    } catch (err) {
+      console.error('❌ [채팅] 세션 생성 실패:', err);
       setError('세션 생성에 실패했습니다.');
     }
   };
@@ -140,7 +174,7 @@ function SearchResultsContent() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col">
+    <div className="w-full h-full flex flex-col">
       {/* 안내 문구 */}
       <div className="flex-shrink-0 px-[60px] pt-[20px] pb-[10px] border-b border-gray-200">
         <p className="text-[14px] text-center text-[#999]">이 서비스는 법률 자문이 아닌 단순 참고용입니다</p>
@@ -151,7 +185,7 @@ function SearchResultsContent() {
       </div>
 
       {/* 채팅 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-[60px] py-[30px] space-y-[20px]" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+      <div className="flex-1 overflow-y-auto px-[60px] py-[30px] space-y-[20px]">
         {messages.length === 0 && !loading && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
