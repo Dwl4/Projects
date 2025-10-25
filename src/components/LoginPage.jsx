@@ -328,7 +328,7 @@ export default function LoginPage() {
             <div className="w-[370px] flex items-center justify-between">
               <span className="text-[20px] text-black">변호사 이신가요?</span>
               <Link to="/lawyer-signup">
-                <button className="bg-[#f0f0f0] rounded-[15px] w-[180px] h-[60px] flex items-center justify-center">
+                <button className="bg-[#cccccc] rounded-[15px] w-[180px] h-[60px] flex items-center justify-center">
                   <span className="text-[20px] font-bold text-neutral-700">변호사 회원가입</span>
                 </button>
               </Link>

@@ -9,7 +9,7 @@ const consonants = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ
 // 메인 컨텐츠만 추출한 컴포넌트
 export function DictionaryContent() {
   const navigate = useNavigate();
-  const [selectedConsonant, setSelectedConsonant] = useState('ㄱ');
+  const [selectedConsonant, setSelectedConsonant] = useState('전체');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPageGroup, setCurrentPageGroup] = useState(0);
 
@@ -38,6 +38,17 @@ export function DictionaryContent() {
 
         {/* 초성 필터 */}
         <div className="h-[50px] flex items-center justify-center gap-[10px] px-[205px]">
+          {/* 전체 버튼 */}
+          <button
+            onClick={() => setSelectedConsonant('전체')}
+            className={`w-[50px] h-[30px] flex items-center justify-center font-bold text-[20px] ${
+              selectedConsonant === '전체'
+                ? 'bg-[#9ec3e5] text-black shadow-[3px_3px_3px_0px_rgba(0,0,0,0.55)]'
+                : 'bg-white text-black border border-black'
+            }`}
+          >
+            전체
+          </button>
           {consonants.map((consonant) => (
             <button
               key={consonant}
