@@ -7,6 +7,9 @@ const LawyerListContent = () => {
   const [lawyers, setLawyers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [totalLawyers, setTotalLawyers] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(20);
   const navigate = useNavigate();
 
   // localStorage에서 즐겨찾기 불러오기
@@ -23,12 +26,26 @@ const LawyerListContent = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await lawyerService.searchLawyers({
-          keyword: searchKeyword
+        console.log('🔍 변호사 검색 요청:', {
+          keyword: searchKeyword || null,
+          page: currentPage,
+          limit: limit
         });
-        setLawyers(response.data || []);
+
+        const response = await lawyerService.searchLawyers({
+          keyword: searchKeyword || undefined,
+          page: currentPage,
+          limit: limit
+        });
+
+        console.log('✅ 변호사 검색 응답:', response);
+
+        // API 응답 구조: { total, page, limit, items }
+        setLawyers(response.items || []);
+        setTotalLawyers(response.total || 0);
+        setCurrentPage(response.page || 1);
       } catch (err) {
-        console.error('변호사 목록 조회 실패:', err);
+        console.error('❌ 변호사 목록 조회 실패:', err);
         setError('변호사 목록을 불러오는데 실패했습니다.');
         setLawyers([]);
       } finally {
@@ -37,7 +54,7 @@ const LawyerListContent = () => {
     };
 
     fetchLawyers();
-  }, [searchKeyword]);
+  }, [searchKeyword, currentPage, limit]);
 
   const toggleFavorite = async (lawyerId) => {
     try {
@@ -119,7 +136,21 @@ const LawyerListContent = () => {
                 <p className="text-[15px] text-black">검색 결과가 없습니다.</p>
               </div>
             ) : (
-              lawyers.map((lawyer) => (
+              lawyers.map((lawyer) => {
+                // 프로필 이미지 URL 처리
+                const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001/api/v1';
+                const baseUrl = API_BASE.replace('/api/v1', '');
+                const profileImageUrl = lawyer.profile_image
+                  ? (lawyer.profile_image.startsWith('http')
+                      ? lawyer.profile_image
+                      : `${baseUrl}${lawyer.profile_image}`)
+                  : '/assets/lawyer-profile.png';
+
+                // 전문분야 개수 계산
+                const displayedSpecialties = lawyer.specialties?.slice(0, 3) || [];
+                const remainingSpecialtiesCount = (lawyer.specialties?.length || 0) - displayedSpecialties.length;
+
+                return (
             <div
               key={lawyer.id}
               className="bg-[#d9d9d9] rounded-[10px] w-[250px] h-[500px] p-[10px] flex flex-col gap-[10px]"
@@ -129,16 +160,24 @@ const LawyerListContent = () => {
                 {/* 짧은 소개 */}
                 <div className="w-[120px] h-[160px] overflow-hidden">
                   <p className="text-[11px] text-black leading-normal">
-                    {lawyer.introduction}
+                    {lawyer.law_firm || '법률사무소'}
                   </p>
+                  {lawyer.consultation_fee && (
+                    <p className="text-[10px] text-black mt-[5px]">
+                      💰 {lawyer.consultation_fee.toLocaleString()}원
+                    </p>
+                  )}
                 </div>
 
                 {/* 이미지 */}
                 <div className="w-[120px] h-[160px] overflow-hidden rounded-[5px]">
                   <img
-                    src="/assets/lawyer-profile.png"
+                    src={profileImageUrl}
                     alt={lawyer.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = '/assets/lawyer-profile.png';
+                    }}
                   />
                 </div>
               </div>
@@ -147,37 +186,41 @@ const LawyerListContent = () => {
               <div className="flex items-center justify-end gap-[10px] px-[20px]">
                 <span className="text-[11px] text-black">변호사</span>
                 <span className="text-[15px] font-bold text-black">{lawyer.name}</span>
+                {lawyer.is_verified && (
+                  <span className="text-[10px] text-blue-600">✓</span>
+                )}
               </div>
 
               {/* 전문 분야 */}
               <div className="flex flex-col gap-[10px] w-full">
                 <p className="text-[12px] font-bold text-black">전문 분야</p>
-                <div className="grid grid-cols-2 gap-y-[5px] text-[10px] h-[41px]">
-                  {lawyer.specialties.slice(0, 3).map((spec, idx) => (
-                    <div key={idx} className="text-black leading-[0]">
-                      <ul className="list-disc ml-[15px]">
-                        <li className="leading-normal">{spec}</li>
-                      </ul>
-                    </div>
-                  ))}
-                  <p className="text-[#787878] leading-normal pl-[20px]">
-                    외 {lawyer.specialtyCount}개
-                  </p>
+                <div className="grid grid-cols-2 gap-y-[5px] text-[10px] min-h-[41px]">
+                  {displayedSpecialties.length > 0 ? (
+                    <>
+                      {displayedSpecialties.map((spec, idx) => (
+                        <div key={idx} className="text-black leading-[0]">
+                          <ul className="list-disc ml-[15px]">
+                            <li className="leading-normal">{spec}</li>
+                          </ul>
+                        </div>
+                      ))}
+                      {remainingSpecialtiesCount > 0 && (
+                        <p className="text-[#787878] leading-normal pl-[20px]">
+                          외 {remainingSpecialtiesCount}개
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-[#999] text-[10px]">전문분야 미등록</p>
+                  )}
                 </div>
               </div>
 
-              {/* 주요 경력 */}
+              {/* 주요 경력 - API에는 없으므로 기본 메시지 */}
               <div className="flex flex-col gap-[10px] w-full">
                 <p className="text-[12px] font-bold text-black">주요 경력</p>
                 <div className="flex flex-col gap-[5px] text-[10px] w-[230px]">
-                  {lawyer.experience.slice(0, 3).map((exp, idx) => (
-                    <div key={idx} className="text-black leading-[0]">
-                      <ul className="list-disc ml-[15px]">
-                        <li className="leading-normal">{exp}</li>
-                      </ul>
-                    </div>
-                  ))}
-                  <p className="text-[#787878] leading-normal pl-[20px]">외 5개</p>
+                  <p className="text-[#999] text-[10px] pl-[15px]">프로필에서 확인</p>
                 </div>
               </div>
 
@@ -186,7 +229,7 @@ const LawyerListContent = () => {
                 <p className="text-[12px] font-bold text-black">활동 지역</p>
                 <div className="text-[10px] w-[230px]">
                   <ul className="list-disc ml-[15px]">
-                    <li className="text-black leading-normal">{lawyer.region}</li>
+                    <li className="text-black leading-normal">{lawyer.region || '미등록'}</li>
                   </ul>
                 </div>
               </div>
@@ -205,13 +248,14 @@ const LawyerListContent = () => {
                 />
                 <button
                   className="text-[10px] font-bold text-black cursor-pointer hover:underline"
-                  onClick={() => navigate('/lawyer-profile')}
+                  onClick={() => navigate(`/lawyer-profile/${lawyer.id}`)}
                 >
                   프로필 확인하기 →
                 </button>
               </div>
             </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

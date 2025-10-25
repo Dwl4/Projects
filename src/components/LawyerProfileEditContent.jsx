@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { demoLawyerProfileDetail } from '../data/demoData';
+import { lawyerService } from '../api';
 
 const LawyerProfileEditContent = () => {
   const navigate = useNavigate();
@@ -12,63 +12,91 @@ const LawyerProfileEditContent = () => {
     phone: '',
     email: '',
     address: '',
+    detailedAddress: '',
     lawFirm: '',
     lawyerRegistrationNumber: '',
     introduction: '',
     specialties: [],
     education: [],
     career: [],
+    consultationFee: '',
+    region: '',
   });
+
+  // 프로필 이미지 상태
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
 
   // 이미지 경로
   const imgLawyerPic = "/assets/lawyer-pic.png";
 
   useEffect(() => {
-    const loginStatus = localStorage.getItem('isLoggedIn');
-    const storedUserName = localStorage.getItem('userName');
-    const currentUser = localStorage.getItem('currentUser');
+    const fetchLawyerProfile = async () => {
+      try {
+        console.log('🔍 변호사 프로필 조회 시작...');
 
-    if (loginStatus === 'true') {
-      // currentUser 데이터 로드 및 폼 초기화
-      if (currentUser) {
-        const userData = JSON.parse(currentUser);
+        // API로 변호사 정보 조회
+        const userData = await lawyerService.getCurrentLawyer();
+
+        console.log('✅ 변호사 프로필 조회 성공:', userData);
+
         setLawyerData(userData);
 
-        // 폼 데이터 초기화
+        // 폼 데이터 초기화 (서버 응답 필드명에 맞춤)
         setFormData({
           name: userData.name || '',
           phone: userData.phone || '',
           email: userData.email || '',
           address: userData.address || '',
-          lawFirm: userData.lawFirm || '',
-          lawyerRegistrationNumber: userData.lawyerRegistrationNumber || '',
-          introduction: userData.introduction || demoLawyerProfileDetail.introduction,
-          specialties: userData.specialties || demoLawyerProfileDetail.specialties,
-          education: userData.education || demoLawyerProfileDetail.education,
-          career: userData.experience || demoLawyerProfileDetail.career,
+          detailedAddress: userData.detailed_address || '',
+          lawFirm: userData.law_firm || '',
+          lawyerRegistrationNumber: userData.lawyer_registration_number || '',
+          introduction: userData.introduction || '',
+          specialties: userData.specialties || [],
+          education: userData.education || [],
+          career: userData.career || [],
+          consultationFee: userData.consultation_fee || '',
+          region: userData.region || '',
         });
+
+        // 프로필 이미지 URL 설정
+        if (userData.profile_image) {
+          const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001/api/v1';
+          const baseUrl = API_BASE.replace('/api/v1', '');
+          setProfileImagePreview(userData.profile_image.startsWith('http') ? userData.profile_image : `${baseUrl}${userData.profile_image}`);
+        }
+
+        // localStorage에도 저장
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+      } catch (error) {
+        console.error('❌ 변호사 프로필 조회 실패:', error);
+
+        // 에러 발생 시 localStorage에서 로드 시도
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+          console.log('📦 localStorage에서 프로필 로드');
+          const userData = JSON.parse(currentUser);
+          setLawyerData(userData);
+          setFormData({
+            name: userData.name || '',
+            phone: userData.phone || '',
+            email: userData.email || '',
+            address: userData.address || '',
+            detailedAddress: userData.detailed_address || '',
+            lawFirm: userData.law_firm || '',
+            lawyerRegistrationNumber: userData.lawyer_registration_number || '',
+            introduction: userData.introduction || '',
+            specialties: userData.specialties || [],
+            education: userData.education || [],
+            career: userData.career || [],
+            consultationFee: userData.consultation_fee || '',
+            region: userData.region || '',
+          });
+        }
       }
-    } else if (currentUser) {
-      const userData = JSON.parse(currentUser);
-      setLawyerData(userData);
+    };
 
-      // 폼 데이터 초기화
-      setFormData({
-        name: userData.name || '',
-        phone: userData.phone || '',
-        email: userData.email || '',
-        address: userData.address || '',
-        lawFirm: userData.lawFirm || '',
-        lawyerRegistrationNumber: userData.lawyerRegistrationNumber || '',
-        introduction: userData.introduction || demoLawyerProfileDetail.introduction,
-        specialties: userData.specialties || demoLawyerProfileDetail.specialties,
-        education: userData.education || demoLawyerProfileDetail.education,
-        career: userData.experience || demoLawyerProfileDetail.career,
-      });
-
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userName', userData.nickname);
-    }
+    fetchLawyerProfile();
   }, []);
 
   const handleInputChange = (e) => {
@@ -106,13 +134,16 @@ const LawyerProfileEditContent = () => {
   const handleEducationAdd = () => {
     setFormData(prev => ({
       ...prev,
-      education: [...prev.education, '']
+      education: [...prev.education, { school: '', major: '', degree: '' }]
     }));
   };
 
-  const handleEducationChange = (index, value) => {
+  const handleEducationChange = (index, field, value) => {
     const newEducation = [...formData.education];
-    newEducation[index] = value;
+    newEducation[index] = {
+      ...newEducation[index],
+      [field]: value
+    };
     setFormData(prev => ({
       ...prev,
       education: newEducation
@@ -122,13 +153,16 @@ const LawyerProfileEditContent = () => {
   const handleCareerAdd = () => {
     setFormData(prev => ({
       ...prev,
-      career: [...prev.career, '']
+      career: [...prev.career, { company: '', position: '', years: 0 }]
     }));
   };
 
-  const handleCareerChange = (index, value) => {
+  const handleCareerChange = (index, field, value) => {
     const newCareer = [...formData.career];
-    newCareer[index] = value;
+    newCareer[index] = {
+      ...newCareer[index],
+      [field]: value
+    };
     setFormData(prev => ({
       ...prev,
       career: newCareer
@@ -151,10 +185,103 @@ const LawyerProfileEditContent = () => {
     }));
   };
 
-  const handleSubmit = () => {
-    // 저장 로직
-    alert('프로필이 수정되었습니다.');
-    navigate('/lawyer-profile');
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      console.log('========== 변호사 프로필 수정 시작 ==========');
+
+      const formDataToSend = new FormData();
+
+      // 기본 정보
+      console.log('📝 기본 정보:');
+      console.log('  - name:', formData.name);
+      console.log('  - phone:', formData.phone);
+      console.log('  - law_firm:', formData.lawFirm);
+      console.log('  - address:', formData.address);
+      console.log('  - detailed_address:', formData.detailedAddress);
+      console.log('  - lawyer_registration_number:', formData.lawyerRegistrationNumber);
+
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('law_firm', formData.lawFirm);
+      formDataToSend.append('address', formData.address);
+      formDataToSend.append('detailed_address', formData.detailedAddress);
+      formDataToSend.append('lawyer_registration_number', formData.lawyerRegistrationNumber);
+
+      // 프로필 정보
+      console.log('\n📋 프로필 정보:');
+      console.log('  - introduction:', formData.introduction);
+      console.log('  - consultation_fee:', formData.consultationFee || 0);
+      console.log('  - region:', formData.region);
+
+      formDataToSend.append('introduction', formData.introduction);
+      formDataToSend.append('consultation_fee', formData.consultationFee || 0);
+      formDataToSend.append('region', formData.region);
+
+      // 배열 정보 (JSON 문자열로 변환)
+      console.log('\n📚 배열 정보:');
+      console.log('  - specialties:', formData.specialties);
+      console.log('  - specialties JSON:', JSON.stringify(formData.specialties));
+      console.log('  - education:', formData.education);
+      console.log('  - education JSON:', JSON.stringify(formData.education));
+      console.log('  - career:', formData.career);
+      console.log('  - career JSON:', JSON.stringify(formData.career));
+
+      formDataToSend.append('specialties', JSON.stringify(formData.specialties));
+      formDataToSend.append('education', JSON.stringify(formData.education));
+      formDataToSend.append('career', JSON.stringify(formData.career));
+
+      // 프로필 이미지 (파일이 있을 경우만)
+      if (profileImage) {
+        console.log('\n🖼️ 프로필 이미지:');
+        console.log('  - 파일명:', profileImage.name);
+        console.log('  - 파일 크기:', profileImage.size, 'bytes');
+        console.log('  - 파일 타입:', profileImage.type);
+        formDataToSend.append('profile_image', profileImage);
+      } else {
+        console.log('\n🖼️ 프로필 이미지: 없음 (기존 이미지 유지)');
+      }
+
+      // FormData 내용 전체 출력
+      console.log('\n📦 전송될 FormData 전체:');
+      for (let pair of formDataToSend.entries()) {
+        if (pair[1] instanceof File) {
+          console.log(`  - ${pair[0]}: [File] ${pair[1].name}`);
+        } else {
+          console.log(`  - ${pair[0]}:`, pair[1]);
+        }
+      }
+
+      console.log('\n🚀 API 호출: PUT /api/v1/lawyers/me');
+
+      // API 호출
+      const updatedData = await lawyerService.updateMyProfile(formDataToSend);
+
+      console.log('✅ 프로필 수정 성공!');
+      console.log('📥 서버 응답:', updatedData);
+
+      // localStorage 업데이트
+      localStorage.setItem('currentUser', JSON.stringify(updatedData));
+
+      alert('프로필이 수정되었습니다.');
+      navigate('/lawyer-profile');
+    } catch (error) {
+      console.error('❌ 프로필 수정 실패:', error);
+      console.error('❌ 에러 응답:', error.response?.data);
+      console.error('❌ 에러 상태:', error.response?.status);
+      alert('프로필 수정 중 오류가 발생했습니다.');
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -202,12 +329,15 @@ const LawyerProfileEditContent = () => {
           {/* 검은색 구분선 */}
           <div className="absolute left-[60px] top-[24px] w-[784px] h-[1px] bg-black mt-[20px]" />
           {/* 저장 버튼 - 오른쪽 끝, 줄 위에 배치 */}
-          <div
-            className="absolute right-[76px] top-[10px] flex items-center justify-center w-[66px] h-[28px] mt-[20px] cursor-pointer hover:bg-[#8bb5d9] bg-[#9ec3e5] z-10"
+          <button
+            className="absolute right-[50px] top-[10px] flex items-center justify-center gap-[5px] px-[20px] h-[36px] mt-[20px] cursor-pointer bg-[#9ec3e5] hover:bg-[#7da9d3] active:bg-[#6b98c2] rounded-[8px] shadow-[0px_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0px_3px_6px_rgba(0,0,0,0.15)] transition-all duration-200 z-10"
             onClick={handleSubmit}
           >
-            <span className="text-[15px] font-bold text-black">저장</span>
-          </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.5 2H3.5C2.67 2 2 2.67 2 3.5V12.5C2 13.33 2.67 14 3.5 14H12.5C13.33 14 14 13.33 14 12.5V3.5C14 2.67 13.33 2 12.5 2ZM11 5L7 9L5 7" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-[15px] font-bold text-white">저장</span>
+          </button>
         </div>
 
         {/* 프로필 편집 박스 */}
@@ -215,17 +345,23 @@ const LawyerProfileEditContent = () => {
           {/* 이미지 */}
           <div className="w-[300px] h-[399px] overflow-hidden relative">
             <img
-              src={imgLawyerPic}
+              src={profileImagePreview || imgLawyerPic}
               alt={formData.name}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-              <div className="w-[100px] h-[100px] rounded-full bg-black bg-opacity-60 flex items-center justify-center cursor-pointer hover:bg-opacity-70">
+              <label className="w-[100px] h-[100px] rounded-full bg-black bg-opacity-60 flex items-center justify-center cursor-pointer hover:bg-opacity-70">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
                 <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="25" cy="25" r="20" stroke="white" strokeWidth="2"/>
                   <path d="M25 15L25 35M15 25L35 25" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
-              </div>
+              </label>
             </div>
           </div>
 
@@ -283,18 +419,20 @@ const LawyerProfileEditContent = () => {
                     <input
                       type="text"
                       name="address"
-                      value={formData.address.split(' ').slice(0, 4).join(' ')}
+                      value={formData.address}
                       onChange={handleInputChange}
+                      placeholder="도로명 주소"
                       className="bg-[#d5d5d5] px-[8px] py-[1px] font-normal focus:outline-none focus:bg-[#c5c5c5] min-w-[200px]"
-                      style={{ width: `${Math.max(200, formData.address.split(' ').slice(0, 4).join(' ').length * 12 + 30)}px` }}
+                      style={{ width: `${Math.max(200, formData.address.length * 12 + 30)}px` }}
                     />
                     <input
                       type="text"
-                      name="addressDetail"
-                      value={formData.address.split(' ').slice(4).join(' ')}
+                      name="detailedAddress"
+                      value={formData.detailedAddress}
                       onChange={handleInputChange}
+                      placeholder="상세주소"
                       className="bg-[#d5d5d5] px-[8px] py-[1px] font-normal focus:outline-none focus:bg-[#c5c5c5] min-w-[150px]"
-                      style={{ width: `${Math.max(150, formData.address.split(' ').slice(4).join(' ').length * 12 + 30)}px` }}
+                      style={{ width: `${Math.max(150, formData.detailedAddress.length * 12 + 30)}px` }}
                     />
                   </div>
                 </div>
@@ -362,23 +500,40 @@ const LawyerProfileEditContent = () => {
         {/* 학력 및 경력 */}
         <div className="flex gap-[10px] px-[10px]">
           {/* 학력 */}
-          <div className="bg-white p-[10px]">
+          <div className="bg-white p-[10px] flex-1">
             <h3 className="text-[20px] font-bold text-black mb-[10px]">학력:</h3>
             <div className="flex flex-col gap-[10px]">
               {formData.education.map((edu, idx) => (
-                <div key={idx} className="flex items-start gap-[20px]">
-                  <button
-                    onClick={() => handleEducationRemove(idx)}
-                    className="text-[15px] font-bold text-[#ff3333] hover:underline"
-                  >
-                    삭제
-                  </button>
+                <div key={idx} className="flex flex-col gap-[5px] border-b border-gray-200 pb-[10px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-bold text-[#6b6b6b]">학력 {idx + 1}</span>
+                    <button
+                      onClick={() => handleEducationRemove(idx)}
+                      className="text-[13px] font-bold text-[#ff3333] hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </div>
                   <input
                     type="text"
-                    value={edu}
-                    onChange={(e) => handleEducationChange(idx, e.target.value)}
-                    className="flex-1 text-[20px] font-bold text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
-                    placeholder="학력 입력"
+                    value={edu.school || ''}
+                    onChange={(e) => handleEducationChange(idx, 'school', e.target.value)}
+                    className="w-full text-[16px] font-bold text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="학교명"
+                  />
+                  <input
+                    type="text"
+                    value={edu.major || ''}
+                    onChange={(e) => handleEducationChange(idx, 'major', e.target.value)}
+                    className="w-full text-[16px] text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="전공"
+                  />
+                  <input
+                    type="text"
+                    value={edu.degree || ''}
+                    onChange={(e) => handleEducationChange(idx, 'degree', e.target.value)}
+                    className="w-full text-[16px] text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="학위 (학사/석사/박사)"
                   />
                 </div>
               ))}
@@ -393,23 +548,40 @@ const LawyerProfileEditContent = () => {
           </div>
 
           {/* 경력 */}
-          <div className="bg-white p-[10px]">
+          <div className="bg-white p-[10px] flex-1">
             <h3 className="text-[20px] font-bold text-black mb-[10px]">경력:</h3>
             <div className="flex flex-col gap-[10px]">
               {formData.career.map((car, idx) => (
-                <div key={idx} className="flex items-start gap-[20px]">
-                  <button
-                    onClick={() => handleCareerRemove(idx)}
-                    className="text-[15px] font-bold text-[#ff3333] hover:underline"
-                  >
-                    삭제
-                  </button>
+                <div key={idx} className="flex flex-col gap-[5px] border-b border-gray-200 pb-[10px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-bold text-[#6b6b6b]">경력 {idx + 1}</span>
+                    <button
+                      onClick={() => handleCareerRemove(idx)}
+                      className="text-[13px] font-bold text-[#ff3333] hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </div>
                   <input
                     type="text"
-                    value={car}
-                    onChange={(e) => handleCareerChange(idx, e.target.value)}
-                    className="flex-1 text-[20px] font-bold text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
-                    placeholder="경력 입력"
+                    value={car.company || ''}
+                    onChange={(e) => handleCareerChange(idx, 'company', e.target.value)}
+                    className="w-full text-[16px] font-bold text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="회사/기관명"
+                  />
+                  <input
+                    type="text"
+                    value={car.position || ''}
+                    onChange={(e) => handleCareerChange(idx, 'position', e.target.value)}
+                    className="w-full text-[16px] text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="직책/직위"
+                  />
+                  <input
+                    type="number"
+                    value={car.years || ''}
+                    onChange={(e) => handleCareerChange(idx, 'years', parseInt(e.target.value) || 0)}
+                    className="w-full text-[16px] text-[#6b6b6b] border-b border-transparent hover:border-[#d9d9d9] focus:outline-none focus:border-[#9ec3e5] pb-[2px]"
+                    placeholder="근무 연수"
                   />
                 </div>
               ))}
