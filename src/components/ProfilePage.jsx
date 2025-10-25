@@ -340,8 +340,8 @@ export default function ProfilePage() {
                 </div>
 
                 {/* 사건 변호사 탭 */}
-                <div className="flex flex-col items-start p-[10px] w-full">
-                  <div className="flex font-bold gap-[50px] items-center p-[10px] text-[10px] w-full">
+                <div className="flex flex-col items-start w-full">
+                  <div className="flex font-bold gap-[50px] items-center py-[10px] text-[18px] w-full relative">
                     <span
                       className={`cursor-pointer transition-colors duration-300 ${activeTab === '사건' ? 'text-[#7bb5ff]' : 'text-black'}`}
                       onClick={() => setActiveTab('사건')}
@@ -354,14 +354,23 @@ export default function ProfilePage() {
                     >
                       변호사
                     </span>
+                    {/* 하단 인디케이터 바 */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-white h-[3px]">
+                      <div
+                        className={`absolute bg-[#7bb5ff] h-[3px] top-0 transition-all duration-300 ${
+                          activeTab === '사건'
+                            ? 'left-[0px] w-[36px]'  // "사건" 위치 (공백 없음)
+                            : 'left-[81px] w-[54px]'  // "변호사" 위치 (36px + 50px)
+                        }`}
+                      />
+                    </div>
                   </div>
-                  <div className="bg-white h-[3px] w-full relative">
-                    <div
-                      className={`absolute bg-[#7bb5ff] h-[3px] top-0 w-[40px] transition-all duration-300 ${
-                        activeTab === '사건' ? 'left-[0px]' : 'left-[71px]'
-                      }`}
-                    />
-                  </div>
+                  {/* 변호사 탭 설명 */}
+                  {activeTab === '변호사' && (
+                    <div className="mt-[15px]">
+                      <p className="text-[14px] text-[#666]">즐겨찾기한 변호사</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 목록 */}
@@ -399,8 +408,12 @@ export default function ProfilePage() {
                             <div
                               className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80"
                               onClick={() => {
-                                // TODO: 대화 내용 확인 페이지로 이동
-                                console.log('세션 UUID:', session.session_uuid);
+                                // 해당 세션의 대화 내역으로 이동
+                                navigate('/search-results', {
+                                  state: {
+                                    sessionUuid: session.session_uuid,
+                                  }
+                                });
                               }}
                             >
                               <span className="font-normal text-[10px] text-black">대화내용 확인</span>
@@ -685,8 +698,8 @@ export default function ProfilePage() {
                 </div>
 
                 {/* 사건 변호사 탭 */}
-                <div className="flex flex-col items-start p-[10px] w-full">
-                  <div className="flex font-bold gap-[50px] items-center p-[10px] text-[10px] w-full">
+                <div className="flex flex-col items-start w-full">
+                  <div className="flex font-bold gap-[50px] items-center py-[10px] text-[18px] w-full relative">
                     <span
                       className={`cursor-pointer transition-colors duration-300 ${activeTab === '사건' ? 'text-[#7bb5ff]' : 'text-black'}`}
                       onClick={() => setActiveTab('사건')}
@@ -699,14 +712,23 @@ export default function ProfilePage() {
                     >
                       변호사
                     </span>
+                    {/* 하단 인디케이터 바 */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-white h-[3px]">
+                      <div
+                        className={`absolute bg-[#7bb5ff] h-[3px] top-0 transition-all duration-300 ${
+                          activeTab === '사건'
+                            ? 'left-[0px] w-[36px]'  // "사건" 위치 (공백 없음)
+                            : 'left-[86px] w-[54px]'  // "변호사" 위치 (36px + 50px)
+                        }`}
+                      />
+                    </div>
                   </div>
-                  <div className="bg-white h-[3px] w-full relative">
-                    <div
-                      className={`absolute bg-[#7bb5ff] h-[3px] top-0 w-[40px] transition-all duration-300 ${
-                        activeTab === '사건' ? 'left-[0px]' : 'left-[71px]'
-                      }`}
-                    />
-                  </div>
+                  {/* 변호사 탭 설명 */}
+                  {activeTab === '변호사' && (
+                    <div className="mt-[15px]">
+                      <p className="text-[14px] text-[#666]">즐겨찾기한 변호사</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 목록 */}
@@ -744,8 +766,12 @@ export default function ProfilePage() {
                             <div
                               className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80"
                               onClick={() => {
-                                // TODO: 대화 내용 확인 페이지로 이동
-                                console.log('세션 UUID:', session.session_uuid);
+                                // 해당 세션의 대화 내역으로 이동
+                                navigate('/search-results', {
+                                  state: {
+                                    sessionUuid: session.session_uuid,
+                                  }
+                                });
                               }}
                             >
                               <span className="font-normal text-[10px] text-black">대화내용 확인</span>

@@ -137,28 +137,39 @@ export default function LawmatePage() {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  // 채팅 세션 목록 가져오기 (한 번만 실행)
-  useEffect(() => {
-    const fetchSessions = async () => {
-      const isLawyer = localStorage.getItem('isLawyer') === 'true';
+  // 채팅 세션 목록 가져오기 함수
+  const fetchSessions = async () => {
+    const isLawyer = localStorage.getItem('isLawyer') === 'true';
 
-      // 변호사가 아니고 로그인되어 있으면 세션 조회
-      if (!isLawyer && isLoggedIn) {
-        try {
-          setSessionsLoading(true);
-          const data = await aiChatService.getMySessions(1, 5); // 최대 5개만 표시
-          setSessions(data.items || []);
-        } catch (error) {
-          console.error('세션 목록 조회 실패:', error);
-          setSessions([]);
-        } finally {
-          setSessionsLoading(false);
-        }
+    // 변호사가 아니고 로그인되어 있으면 세션 조회
+    if (!isLawyer && isLoggedIn) {
+      try {
+        setSessionsLoading(true);
+        console.log('🔄 사건 기록 새로고침');
+        const data = await aiChatService.getMySessions(1, 5); // 최대 5개만 표시
+        setSessions(data.items || []);
+        console.log('✅ 사건 기록 업데이트:', data.items?.length || 0, '개');
+      } catch (error) {
+        console.error('세션 목록 조회 실패:', error);
+        setSessions([]);
+      } finally {
+        setSessionsLoading(false);
       }
-    };
+    }
+  };
 
+  // 로그인 시 세션 목록 가져오기
+  useEffect(() => {
     fetchSessions();
-  }, [isLoggedIn]); // isLoggedIn만 의존성으로
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 페이지 이동 시 세션 목록 새로고침
+  useEffect(() => {
+    if (isLoggedIn) {
+      console.log('📍 페이지 이동 감지:', location.pathname);
+      fetchSessions();
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 로그인된 사용자를 위한 사이드바 컴포넌트
   const LoggedInSidebar = () => {
@@ -247,7 +258,18 @@ export default function LawmatePage() {
             ) : caseData.length > 0 ? (
               caseData.map((session, index) => (
                 <React.Fragment key={session.session_uuid}>
-                  <div className="py-[14.5px] pr-[15px]">
+                  <div
+                    className="py-[14.5px] pr-[15px] cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => {
+                      // 세션 UUID와 함께 채팅 페이지로 이동
+                      navigate('/search-results', {
+                        state: {
+                          sessionUuid: session.session_uuid,
+                          // firstQuestion 없이 이동 (기존 대화 불러오기)
+                        }
+                      });
+                    }}
+                  >
                     <div className="mb-[8px]">
                       <span className="text-[16px] font-bold text-black pl-[30px]">사건{index + 1}.</span>
                     </div>

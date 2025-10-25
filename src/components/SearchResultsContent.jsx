@@ -15,7 +15,7 @@ function SearchResultsContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
-  const initializedRef = useRef(false);  // 🔹 중복 실행 방지
+  const processedSessionRef = useRef(null);  // 🔹 이미 처리한 세션 추적
 
   // 자동 스크롤
   const scrollToBottom = () => {
@@ -26,22 +26,33 @@ function SearchResultsContent() {
     scrollToBottom();
   }, [messages]);
 
-  // 1️⃣ 컴포넌트 초기화 - 첫 질문 전송 (한 번만 실행)
+  // 1️⃣ 컴포넌트 초기화 - sessionUuid 변경될 때마다 실행
   useEffect(() => {
-    if (initializedRef.current) return;  // 이미 실행되었으면 중단
-    initializedRef.current = true;
+    console.log('🔄 세션 변경 감지', { receivedSessionUuid, firstQuestion, processed: processedSessionRef.current });
+
+    // 이미 처리한 세션이면 중복 실행 방지
+    const sessionKey = `${receivedSessionUuid}_${firstQuestion}`;
+    if (processedSessionRef.current === sessionKey) {
+      console.log('⏭️ 이미 처리된 세션 - 스킵');
+      return;
+    }
+    processedSessionRef.current = sessionKey;
 
     if (receivedSessionUuid && firstQuestion) {
       // 홈에서 받은 세션 UUID와 첫 질문으로 대화 시작
+      setSessionUuid(receivedSessionUuid);
       sendFirstQuestion(receivedSessionUuid, firstQuestion);
     } else if (receivedSessionUuid) {
-      // 세션 UUID만 있고 질문이 없으면 메시지 로드
+      // 세션 UUID만 있고 질문이 없으면 메시지 로드 (사이드바/프로필 클릭)
+      setSessionUuid(receivedSessionUuid);
       loadMessages(receivedSessionUuid);
     } else {
-      // 직접 접근한 경우 (드물지만) 새 세션 생성
-      initializeSession();
+      // 세션이 없으면 빈 상태로 유지 (세션 생성하지 않음)
+      console.log('⚠️ 세션 정보 없음 - 빈 상태 유지');
+      setSessionUuid(null);
+      setMessages([]);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [receivedSessionUuid, firstQuestion]); // receivedSessionUuid가 변경될 때마다 실행
 
   // 2️⃣ 첫 질문 전송 (홈에서 넘어온 경우)
   const sendFirstQuestion = async (uuid, question) => {
@@ -99,23 +110,7 @@ function SearchResultsContent() {
     }
   };
 
-  // 4️⃣ 세션 생성 (직접 접근 시에만 사용)
-  const initializeSession = async () => {
-    try {
-      console.log('🔵 [채팅] 새 세션 생성 시작 (직접 접근)');
-
-      const session = await aiChatService.createSession('AI 법률 상담', '');
-      console.log('✅ [채팅] 세션 생성 성공', session);
-
-      setSessionUuid(session.session_uuid);
-      console.log('💾 [채팅] 저장된 sessionUuid:', session.session_uuid);
-    } catch (err) {
-      console.error('❌ [채팅] 세션 생성 실패:', err);
-      setError('세션 생성에 실패했습니다.');
-    }
-  };
-
-  // 3️⃣ 메시지 전송
+  // 4️⃣ 메시지 전송
   const handleSendMessage = async () => {
     // 1. 빈 메시지나 세션 없으면 중단
     if (!inputMessage.trim() || !sessionUuid || loading) return;
