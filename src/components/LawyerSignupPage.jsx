@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { authService } from '../api';
 
 const imgLogin = "/assets/Login.png";
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 
 export default function LawyerSignupPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,6 +15,7 @@ export default function LawyerSignupPage() {
     nickname: '',
     lawFirm: '',
     lawyerRegistrationNumber: '',
+    phone: '',
     address: '',
     certificate: null
   });
@@ -59,10 +62,57 @@ export default function LawyerSignupPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 변호사 회원가입 처리 로직
-    console.log('변호사 회원가입 데이터:', formData, agreements);
+
+    // 필수 입력 필드 확인
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || !formData.lawFirm || !formData.address) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    // 비밀번호 확인
+    if (formData.password !== formData.confirmPassword) {
+      alert('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    // 필수 약관 동의 확인
+    if (!agreements.terms || !agreements.privacy) {
+      alert('필수 약관에 동의해주세요.');
+      return;
+    }
+
+    try {
+      // FormData 생성 (파일 업로드용)
+      const formDataToSend = new FormData();
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('phone', formData.phone || '');
+      formDataToSend.append('law_firm', formData.lawFirm);
+      formDataToSend.append('address', formData.address);
+
+      // 프로필 이미지가 있으면 추가
+      if (formData.certificate) {
+        formDataToSend.append('profile_image', formData.certificate);
+      }
+
+      const result = await authService.registerLawyer(formDataToSend);
+      console.log('변호사 회원가입 성공:', result);
+
+      alert('성공적으로 변호사 회원가입이 완료되었습니다. 로그인 해주세요.');
+      navigate('/login');
+    } catch (error) {
+      console.error('변호사 회원가입 실패:', error);
+      if (error.response?.status === 409) {
+        alert('이미 가입된 이메일입니다.');
+      } else if (error.response?.data?.detail) {
+        alert(`회원가입 실패: ${JSON.stringify(error.response.data.detail)}`);
+      } else {
+        alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    }
   };
 
   const handleCancel = () => {

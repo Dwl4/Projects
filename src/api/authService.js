@@ -69,3 +69,11 @@ export const isAuthenticated = () => {
 export const getUserType = () => {
   return localStorage.getItem('user_type');
 };
+
+/**
+ * 현재 로그인한 사용자 정보 조회
+ */
+export const getCurrentUser = async () => {
+  const response = await api.get('/users/me');
+  return response.data;
+};

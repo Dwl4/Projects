@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { demoUsers } from '../data/demoData';
+import { authService } from '../api';
 
 const imgLogin = "/assets/Login.png";
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
@@ -78,7 +78,7 @@ export default function SignupPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // 필수 입력 필드 확인
@@ -99,14 +99,32 @@ export default function SignupPage() {
       return;
     }
 
-    // 회원가입 처리 로직
-    console.log('회원가입 데이터:', formData, agreements);
+    try {
+      // API 회원가입 호출
+      const userData = {
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        nickname: formData.nickname,
+        phone: formData.phone || '',
+        address: formData.address
+      };
 
-    // 회원가입 완료 알림
-    alert('성공적으로 회원가입이 완료되었습니다. 로그인 해주세요.');
+      const result = await authService.registerUser(userData);
+      console.log('회원가입 성공:', result);
 
-    // 로그인 페이지로 이동
-    navigate('/login');
+      alert('성공적으로 회원가입이 완료되었습니다. 로그인 해주세요.');
+      navigate('/login');
+    } catch (error) {
+      console.error('회원가입 실패:', error);
+      if (error.response?.status === 409) {
+        alert('이미 가입된 이메일입니다.');
+      } else if (error.response?.data?.detail) {
+        alert(`회원가입 실패: ${error.response.data.detail}`);
+      } else {
+        alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    }
   };
 
   const handleCancel = () => {

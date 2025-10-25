@@ -12,6 +12,7 @@ import DictionaryDetailContent from './DictionaryDetailContent';  // ✅ 용어�
 import LawyerProfileContent from './LawyerProfileContent';  // ✅ 변호사 프로필 컴포넌트 import
 import LawyerProfileEditContent from './LawyerProfileEditContent';  // ✅ 변호사 프로필 수정 컴포넌트 import
 import { demoCaseData } from '../data/demoData';  // ✅ 사건 데이터 import
+import { authService, aiChatService } from '../api';  // ✅ API 서비스 import
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 const imgImage12 = "/assets/Logout_Image.png";
@@ -45,23 +46,54 @@ export default function LawmatePage() {
   const [activeSection, setActiveSection] = useState(getActiveSectionFromPath());
 
   useEffect(() => {
-    // localStorage에서 로그인 상태 확인
-    const loginStatus = localStorage.getItem('isLoggedIn');
-    const storedUserName = localStorage.getItem('userName');
-    const currentUser = localStorage.getItem('currentUser');
+    // API를 통해 현재 로그인한 사용자 정보 가져오기
+    const fetchCurrentUser = async () => {
+      const token = localStorage.getItem('access_token');
 
-    if (loginStatus === 'true') {
-      setIsLoggedIn(true);
-      setUserName(storedUserName || 'Index');
-    } else if (currentUser) {
-      // EmailLoginPage에서 로그인한 경우 currentUser 데이터로 상태 업데이트
-      const userData = JSON.parse(currentUser);
-      setIsLoggedIn(true);
-      setUserName(userData.nickname || 'Index');
-      // localStorage 동기화
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userName', userData.nickname);
-    }
+      if (token) {
+        try {
+          const userData = await authService.getCurrentUser();
+
+          // 사용자 정보 업데이트
+          setIsLoggedIn(true);
+
+          // user_type에 따라 적절한 이름 필드 사용
+          const userType = localStorage.getItem('user_type');
+          if (userType === 'lawyer') {
+            setUserName(userData.name || 'Index');
+            localStorage.setItem('isLawyer', 'true');
+          } else {
+            setUserName(userData.nickname || userData.name || 'Index');
+            localStorage.setItem('isLawyer', 'false');
+          }
+
+          // localStorage에 사용자 정보 저장
+          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('userName', userData.nickname || userData.name || 'Index');
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+        } catch (error) {
+          console.error('사용자 정보 가져오기 실패:', error);
+          // 토큰이 유효하지 않으면 로그아웃 처리
+          if (error.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_type');
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('isLawyer');
+            setIsLoggedIn(false);
+            setUserName('Index');
+          }
+        }
+      } else {
+        // 토큰이 없으면 로그아웃 상태로 설정
+        setIsLoggedIn(false);
+        setUserName('Index');
+      }
+    };
+
+    fetchCurrentUser();
   }, []);
 
   // URL 경로 변경 시 activeSection 업데이트
@@ -73,8 +105,39 @@ export default function LawmatePage() {
   const LoggedInSidebar = () => {
     // 변호사 여부 확인
     const isLawyer = localStorage.getItem('isLawyer') === 'true';
-    // 변호사면 빈 배열, 일반 사용자면 demoCaseData 사용
-    const caseData = isLawyer ? [] : demoCaseData;
+
+    // 사건 기록 상태
+    const [sessions, setSessions] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    // 현재 사용자 정보에서 프로필 이미지 가져오기
+    const currentUserData = localStorage.getItem('currentUser');
+    const profileImageUrl = currentUserData ? JSON.parse(currentUserData).profile_image_url : null;
+
+    // 채팅 세션 목록 가져오기
+    useEffect(() => {
+      const fetchSessions = async () => {
+        // 변호사가 아니고 로그인되어 있으면 세션 조회
+        if (!isLawyer && isLoggedIn) {
+          try {
+            setLoading(true);
+            const data = await aiChatService.getMySessions(1, 5); // 최대 5개만 표시
+            setSessions(data.items || []);
+          } catch (error) {
+            console.error('세션 목록 조회 실패:', error);
+            // 에러 시 빈 배열 유지
+            setSessions([]);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+
+      fetchSessions();
+    }, [isLawyer, isLoggedIn]);
+
+    // 변호사면 빈 배열, 일반 사용자면 API에서 가져온 세션 사용
+    const caseData = isLawyer ? [] : sessions;
 
     return (
     <>
@@ -85,7 +148,7 @@ export default function LawmatePage() {
             <div className="w-full h-full rounded-full overflow-hidden border-2 border-white">
               <div
                 className="w-full h-full bg-center bg-cover bg-no-repeat"
-                style={{ backgroundImage: `url('${imgImage14}')` }}
+                style={{ backgroundImage: `url('${profileImageUrl || imgImage12}')` }}
               />
             </div>
           </div>
@@ -111,7 +174,10 @@ export default function LawmatePage() {
           <button
             className="w-[200px] h-[31px] bg-white rounded-[5px] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.25)] font-bold text-[#08213b] text-[15px]"
             onClick={() => {
-              // localStorage 값 제거
+              // authService.logout()으로 모든 토큰 및 사용자 정보 제거
+              authService.logout();
+
+              // 추가 localStorage 값 제거
               localStorage.removeItem("isLoggedIn");
               localStorage.removeItem("userName");
               localStorage.removeItem("currentUser");
@@ -141,15 +207,22 @@ export default function LawmatePage() {
 
           {/* 사건 목록 */}
           <div className="space-y-[0px]">
-            {caseData.length > 0 ? (
-              caseData.map((caseItem, index) => (
-                <React.Fragment key={index}>
+            {loading ? (
+              <div className="py-[20px] px-[30px]">
+                <p className="text-[13px] text-[#787878] font-bold text-center">로딩 중...</p>
+              </div>
+            ) : caseData.length > 0 ? (
+              caseData.map((session, index) => (
+                <React.Fragment key={session.session_uuid}>
                   <div className="py-[14.5px] pr-[15px]">
                     <div className="mb-[8px]">
                       <span className="text-[16px] font-bold text-black pl-[30px]">사건{index + 1}.</span>
                     </div>
                     <div className="pl-[20px]">
-                      <p className="text-[12px] text-black leading-[1.5] pl-[30px]">{caseItem.title}</p>
+                      <p className="text-[12px] text-black leading-[1.5] pl-[30px]">{session.title}</p>
+                      {session.legal_category && (
+                        <p className="text-[10px] text-[#787878] pl-[30px] mt-[4px]">{session.legal_category}</p>
+                      )}
                     </div>
                   </div>
                   <div className="w-[295px] h-[3px] bg-[#d9d9d9] mb-[16px]" />
@@ -221,6 +294,14 @@ export default function LawmatePage() {
             onClick={() => navigate("/")}   // ✅ 로고 클릭 시 home으로 돌아감
           />
           <nav className="flex items-center gap-[64px] text-white font-bold text-[16px]">
+            <div
+              className={`text-center cursor-pointer hover:text-gray-200 ${
+                activeSection === "home" ? "text-gray-800" : "text-white"
+              }`}
+              onClick={() => navigate("/")}
+            >
+              홈
+            </div>
             <div
               className={`text-center cursor-pointer hover:text-gray-200 ${
                 activeSection === "case-law" ? "text-gray-800" : "text-white"

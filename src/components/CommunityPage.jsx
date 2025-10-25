@@ -1,11 +1,47 @@
-import React, { useState } from 'react';
-import { demoCommunityPosts } from '../data/demoData';
+import React, { useState, useEffect } from 'react';
+import { communityService } from '../api';
 
 const CommunityPage = ({ onPostClick }) => {
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [currentPage, setCurrentPage] = useState(1);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10; // 페이지당 게시글 수
 
-  const communityPosts = demoCommunityPosts;
+  // 게시글 목록 조회
+  const fetchPosts = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = {
+        page: currentPage,
+        limit: limit,
+      };
+
+      // 전체가 아닌 경우 카테고리 필터 추가
+      if (selectedCategory !== '전체') {
+        params.category = selectedCategory;
+      }
+
+      const response = await communityService.getPosts(params);
+      setPosts(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
+    } catch (err) {
+      console.error('게시글 목록 조회 실패:', err);
+      setError('게시글을 불러오는데 실패했습니다.');
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 카테고리 또는 페이지 변경 시 게시글 조회
+  useEffect(() => {
+    fetchPosts();
+  }, [selectedCategory, currentPage]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
@@ -16,16 +52,10 @@ const CommunityPage = ({ onPostClick }) => {
     setCurrentPage(page);
   };
 
-  // 선택된 카테고리에 따라 게시글 필터링
-  const filteredPosts = selectedCategory === '전체'
-    ? communityPosts
-    : communityPosts.filter(post => post.category === selectedCategory);
-
   // 게시글 클릭 핸들러
   const handlePostClick = (post) => {
-    // 특정 게시글 (LCK 관련 글)을 클릭했을 때만 상세 페이지로 이동
-    if (post.title.includes('[LCK] DRX \'레이지필\' 데뷔!') && onPostClick) {
-      onPostClick();
+    if (onPostClick) {
+      onPostClick(post);
     }
   };
 
@@ -77,10 +107,31 @@ const CommunityPage = ({ onPostClick }) => {
             <div className="w-[100px] h-[30px] flex items-center justify-center p-[10px] text-[13px] text-[#08213b]">조회</div>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="w-full h-[300px] flex items-center justify-center">
+              <p className="text-[14px] text-gray-500">로딩 중...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="w-full h-[300px] flex items-center justify-center">
+              <p className="text-[14px] text-red-500">{error}</p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && posts.length === 0 && (
+            <div className="w-full h-[300px] flex items-center justify-center">
+              <p className="text-[14px] text-gray-500">게시글이 없습니다.</p>
+            </div>
+          )}
+
           {/* Table Rows */}
-          {filteredPosts.map((post, index) => (
+          {!loading && !error && posts.length > 0 && posts.map((post) => (
             <div
-              key={index}
+              key={post.id}
               className="w-full bg-white flex hover:bg-gray-50 transition-colors cursor-pointer"
               onClick={() => handlePostClick(post)}
             >
@@ -91,42 +142,66 @@ const CommunityPage = ({ onPostClick }) => {
                 {post.category}
               </div>
               <div className="w-[560px] h-[30px] flex items-center p-[10px] text-[13px] text-black">
-                <span className={post.isNotice && post.title.includes('[공지]') ? 'text-red-500' : 'text-black'}>
+                <span className={post.isNotice && post.title?.includes('[공지]') ? 'text-red-500' : 'text-black'}>
                   {post.title}
                 </span>
-                {post.commentCount && (
-                  <span className="text-red-500 text-[9px] font-medium ml-[4px]">{post.commentCount}</span>
+                {post.commentCount > 0 && (
+                  <span className="text-red-500 text-[9px] font-medium ml-[4px]">[{post.commentCount}]</span>
                 )}
               </div>
               <div className="w-[100px] h-[30px] flex items-center justify-center p-[10px] text-[13px] text-black">
-                {post.date}
+                {new Date(post.createdAt).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                }).replace(/\. /g, '.').replace(/\.$/, '')}
               </div>
               <div className="w-[100px] h-[30px] flex items-center justify-center p-[10px] text-[13px] text-black">
-                {post.views}
+                {post.views || 0}
               </div>
             </div>
           ))}
         </div>
 
         {/* Pagination */}
-        <div className="h-[207px] flex items-center justify-center">
-          <div className="flex items-center gap-[20px]">
-            <div className="flex items-center justify-between w-[200px] text-[10px] font-bold text-black">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((page) => (
+        {!loading && !error && posts.length > 0 && (
+          <div className="h-[207px] flex items-center justify-center">
+            <div className="flex items-center gap-[20px]">
+              {/* Previous Button */}
+              {currentPage > 1 && (
                 <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`${currentPage === page ? 'underline' : ''} hover:underline transition-all`}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="bg-[#d9d9d9] px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
                 >
-                  {page}
+                  이전
                 </button>
-              ))}
+              )}
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-[10px] text-[10px] font-bold text-black">
+                {Array.from({ length: Math.min(totalPages, 9) }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`${currentPage === page ? 'underline' : ''} hover:underline transition-all px-[5px]`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              {/* Next Button */}
+              {currentPage < totalPages && (
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="bg-[#d9d9d9] px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
+                >
+                  다음
+                </button>
+              )}
             </div>
-            <button className="bg-[#d9d9d9] px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors">
-              다음
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

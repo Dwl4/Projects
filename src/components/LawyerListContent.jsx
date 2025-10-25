@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { demoLawyerProfiles } from '../data/demoData';
+import { lawyerService } from '../api';
 
 const LawyerListContent = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [lawyers, setLawyers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // localStorage에서 즐겨찾기 불러오기
@@ -14,18 +17,53 @@ const LawyerListContent = () => {
 
   const [favorites, setFavorites] = useState(getFavoritesFromStorage());
 
-  const toggleFavorite = (lawyerId) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(lawyerId)) {
-        newFavorites.delete(lawyerId);
-      } else {
-        newFavorites.add(lawyerId);
+  // 변호사 목록 불러오기
+  useEffect(() => {
+    const fetchLawyers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await lawyerService.searchLawyers({
+          keyword: searchKeyword
+        });
+        setLawyers(response.data || []);
+      } catch (err) {
+        console.error('변호사 목록 조회 실패:', err);
+        setError('변호사 목록을 불러오는데 실패했습니다.');
+        setLawyers([]);
+      } finally {
+        setLoading(false);
       }
-      // localStorage에 저장
-      localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
-      return newFavorites;
-    });
+    };
+
+    fetchLawyers();
+  }, [searchKeyword]);
+
+  const toggleFavorite = async (lawyerId) => {
+    try {
+      const isCurrentlyFavorite = favorites.has(lawyerId);
+
+      if (isCurrentlyFavorite) {
+        await lawyerService.removeLawyerFromFavorites(lawyerId);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.delete(lawyerId);
+          localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
+          return newFavorites;
+        });
+      } else {
+        await lawyerService.addLawyerToFavorites(lawyerId);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.add(lawyerId);
+          localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
+          return newFavorites;
+        });
+      }
+    } catch (err) {
+      console.error('즐겨찾기 토글 실패:', err);
+      alert('즐겨찾기 처리에 실패했습니다.');
+    }
   };
 
   return (
@@ -60,9 +98,28 @@ const LawyerListContent = () => {
           </div>
         </div>
 
+        {/* 로딩 및 에러 상태 */}
+        {loading && (
+          <div className="w-full text-center py-[40px]">
+            <p className="text-[15px] text-black">변호사 목록을 불러오는 중...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="w-full text-center py-[40px]">
+            <p className="text-[15px] text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* 변호사 카드 그리드 */}
-        <div className="w-full flex flex-wrap gap-[35px] justify-between px-[40px] pb-[20px]">
-          {demoLawyerProfiles.map((lawyer) => (
+        {!loading && !error && (
+          <div className="w-full flex flex-wrap gap-[35px] justify-between px-[40px] pb-[20px]">
+            {lawyers.length === 0 ? (
+              <div className="w-full text-center py-[40px]">
+                <p className="text-[15px] text-black">검색 결과가 없습니다.</p>
+              </div>
+            ) : (
+              lawyers.map((lawyer) => (
             <div
               key={lawyer.id}
               className="bg-[#d9d9d9] rounded-[10px] w-[250px] h-[500px] p-[10px] flex flex-col gap-[10px]"
@@ -154,8 +211,10 @@ const LawyerListContent = () => {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </>
   );

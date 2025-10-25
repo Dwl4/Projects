@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { demoUsers, demoLawyerUsers } from '../data/demoData';
+import { authService } from '../api';
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 const imgLogin = "/assets/Login.png";
@@ -25,64 +25,61 @@ export default function LoginPage() {
     setPassword('');
   }, []);
 
-  const handleLawyerLogin = () => {
+  const handleLawyerLogin = async () => {
     // 이메일과 비밀번호 입력 확인
     if (!email || !password) {
       alert('이메일 주소와 비밀번호를 입력해주세요.');
       return;
     }
 
-    // localStorage에서 변호사 목록 가져오기 (없으면 demoData 사용)
-    let lawyers = JSON.parse(localStorage.getItem('demoLawyerUsers') || 'null');
-    if (!lawyers) {
-      // 처음 로드 시 demoLawyerUsers를 localStorage에 저장
-      localStorage.setItem('demoLawyerUsers', JSON.stringify(demoLawyerUsers));
-      lawyers = demoLawyerUsers;
-    }
+    try {
+      // API 로그인 호출
+      const result = await authService.login(email, password, 'lawyer');
 
-    // 변호사 정보 확인
-    const lawyer = lawyers.find(l => l.email === email && l.password === password);
-
-    if (lawyer) {
-      // 로그인 성공
-      localStorage.setItem('currentUser', JSON.stringify(lawyer));
+      // 로그인 성공 시 사용자 정보 저장
+      localStorage.setItem('currentUser', JSON.stringify(result.lawyer || {}));
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userName', lawyer.nickname);
-      localStorage.setItem('isLawyer', 'true'); // 변호사 여부 추가
+      localStorage.setItem('userName', result.lawyer?.name || '변호사');
+      localStorage.setItem('isLawyer', 'true');
+
       alert('변호사 로그인 성공!');
-      window.location.href = '/'; // 메인 페이지로 이동
-    } else {
-      alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('로그인 실패:', error);
+      if (error.response?.status === 401) {
+        alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else {
+        alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
     }
   };
 
-  const handleEmailLogin = () => {
+  const handleEmailLogin = async () => {
     // 이메일과 비밀번호 입력 확인
     if (!email || !password) {
       alert('이메일 주소와 비밀번호를 입력해주세요.');
       return;
     }
 
-    // localStorage에서 사용자 목록 가져오기 (없으면 demoData 사용)
-    let users = JSON.parse(localStorage.getItem('demoUsers') || 'null');
-    if (!users) {
-      // 처음 로드 시 demoUsers를 localStorage에 저장
-      localStorage.setItem('demoUsers', JSON.stringify(demoUsers));
-      users = demoUsers;
-    }
+    try {
+      // API 로그인 호출
+      const result = await authService.login(email, password, 'user');
 
-    // 사용자 정보 확인
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (user) {
-      // 로그인 성공
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      // 로그인 성공 시 사용자 정보 저장
+      localStorage.setItem('currentUser', JSON.stringify(result.user || {}));
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userName', user.nickname);
+      localStorage.setItem('userName', result.user?.nickname || result.user?.name || '사용자');
+      localStorage.setItem('isLawyer', 'false');
+
       alert('로그인 성공!');
-      window.location.href = '/'; // 메인 페이지로 이동
-    } else {
-      alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('로그인 실패:', error);
+      if (error.response?.status === 401) {
+        alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else {
+        alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
     }
   };
 

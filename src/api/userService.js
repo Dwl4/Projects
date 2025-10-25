@@ -50,3 +50,16 @@ export const deleteUser = async (userId) => {
   const response = await api.delete(`/users/${userId}`);
   return response.data;
 };
+
+/**
+ * 현재 로그인한 사용자 프로필 업데이트
+ * @param {FormData} formData - name, nickname, phone, address, profile_image
+ */
+export const updateCurrentUser = async (formData) => {
+  const response = await api.put('/users/me', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

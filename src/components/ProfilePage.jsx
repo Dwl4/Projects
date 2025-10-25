@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { demoProfileUser, demoCaseData, demoLawyerProfiles } from '../data/demoData';
+import { authService, userService, aiChatService } from '../api';
 
+const imgImage12 = "/assets/Logout_Image.png"; // 기본 프로필 이미지 (사람 아이콘)
 const imgImage14 = "/assets/Login_Image.png";
 const imgImage17 = "/assets/haein.png";
 const imgImage20 = "/assets/favorite.png";
@@ -18,6 +20,12 @@ export default function ProfilePage() {
   };
 
   const [currentUser, setCurrentUser] = useState(getCurrentUser());
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+
+  // 사건 기록 상태
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   // localStorage에서 즐겨찾기 불러오기
   const getFavoritesFromStorage = () => {
@@ -36,47 +44,151 @@ export default function ProfilePage() {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [editedNickname, setEditedNickname] = useState(currentUser.nickname);
 
-  const handleSaveProfile = () => {
+  // API를 통해 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        setCurrentUser(userData);
+        setEditedNickname(userData.nickname || userData.name);
+
+        // 프로필 이미지 URL이 있으면 설정
+        if (userData.profile_image_url) {
+          setProfileImagePreview(userData.profile_image_url);
+        }
+      } catch (error) {
+        console.error('사용자 정보 가져오기 실패:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // 사건 기록(채팅 세션) 가져오기
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        setSessionsLoading(true);
+        const data = await aiChatService.getMySessions(1, 20); // 전체 목록 조회
+        setSessions(data.items || []);
+      } catch (error) {
+        console.error('세션 목록 조회 실패:', error);
+        setSessions([]);
+      } finally {
+        setSessionsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, []);
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImage(file);
+
+      // 이미지 미리보기
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+
+      // 이미지를 선택하면 즉시 업로드
+      try {
+        const formData = new FormData();
+        formData.append('profile_image', file);
+
+        // 기존 사용자 정보 추가 (필수 필드)
+        if (currentUser.name) {
+          formData.append('name', currentUser.name);
+        }
+        if (currentUser.nickname) {
+          formData.append('nickname', currentUser.nickname);
+        }
+        if (currentUser.phone) {
+          formData.append('phone', currentUser.phone);
+        }
+        if (currentUser.address) {
+          formData.append('address', currentUser.address);
+        }
+
+        const updatedUser = await userService.updateCurrentUser(formData);
+
+        // 상태 업데이트
+        setCurrentUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        // 사이드바 업데이트를 위한 이벤트 발생
+        window.dispatchEvent(new Event('localStorageChange'));
+
+        alert('프로필 이미지가 업데이트되었습니다.');
+      } catch (error) {
+        console.error('이미지 업로드 실패:', error);
+        alert('이미지 업로드 중 오류가 발생했습니다. 다시 시도해주세요.');
+        // 실패 시 미리보기 초기화
+        setProfileImage(null);
+        setProfileImagePreview(null);
+      }
+    }
+  };
+
+  const handleSaveProfile = async () => {
     // 비밀번호 확인
     if (newPassword && newPassword !== confirmPassword) {
       alert('비밀번호가 일치하지 않습니다.');
       return;
     }
 
-    // localStorage에서 현재 사용자 정보 가져오기
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    try {
+      const formData = new FormData();
 
-    // 업데이트할 정보 준비
-    const updatedUser = {
-      ...currentUser,
-      nickname: editedNickname
-    };
+      // 프로필 이미지가 있으면 추가
+      if (profileImage) {
+        formData.append('profile_image', profileImage);
+      }
 
-    // 비밀번호가 입력되었으면 업데이트
-    if (newPassword) {
-      updatedUser.password = newPassword;
+      // 닉네임 추가
+      if (editedNickname && editedNickname !== currentUser.nickname) {
+        formData.append('nickname', editedNickname);
+      }
+
+      // 이름 추가 (필요시)
+      if (currentUser.name) {
+        formData.append('name', currentUser.name);
+      }
+
+      // 전화번호 추가 (필요시)
+      if (currentUser.phone) {
+        formData.append('phone', currentUser.phone);
+      }
+
+      // 주소 추가 (필요시)
+      if (currentUser.address) {
+        formData.append('address', currentUser.address);
+      }
+
+      // API 호출
+      const updatedUser = await userService.updateCurrentUser(formData);
+
+      // 상태 업데이트
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      localStorage.setItem('userName', updatedUser.nickname || updatedUser.name);
+
+      alert('정보가 저장되었습니다.');
+
+      // 비밀번호 입력 필드 초기화
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsEditMode(false);
+
+      // 사이드바 업데이트를 위한 이벤트 발생
+      window.dispatchEvent(new Event('localStorageChange'));
+    } catch (error) {
+      console.error('프로필 업데이트 실패:', error);
+      alert('프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
-
-    // localStorage에 저장
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    localStorage.setItem('userName', editedNickname); // 사이드바 업데이트용
-
-    // demoUsers 배열도 업데이트 (로그인 검증용)
-    const users = JSON.parse(localStorage.getItem('demoUsers') || '[]');
-    const userIndex = users.findIndex(u => u.email === currentUser.email);
-    if (userIndex !== -1) {
-      users[userIndex] = updatedUser;
-      localStorage.setItem('demoUsers', JSON.stringify(users));
-    }
-
-    alert('정보가 저장되었습니다.');
-
-    // 비밀번호 입력 필드 초기화
-    setNewPassword('');
-    setConfirmPassword('');
-
-    // 페이지 새로고침하여 사이드바 업데이트 반영
-    window.location.reload();
   };
 
   const toggleFavorite = (lawyerId) => {
@@ -158,13 +270,19 @@ export default function ProfilePage() {
                     <div
                       className="w-[150px] h-[150px] bg-cover bg-center rounded-full"
                       style={{
-                        backgroundImage: `url('${imgImage14}')`,
+                        backgroundImage: `url('${profileImagePreview || currentUser.profile_image_url || imgImage12}')`,
                       }}
                     />
                   </div>
-                  <div className="bg-white flex items-center justify-center px-[20px] py-[3px] rounded-[5px] cursor-pointer hover:opacity-80">
+                  <label className="bg-white flex items-center justify-center px-[20px] py-[3px] rounded-[5px] cursor-pointer hover:opacity-80">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
                     <span className="font-bold text-[#08213b] text-[15px]">이미지 수정</span>
-                  </div>
+                  </label>
                 </div>
 
                 {/* 구분선 */}
@@ -250,19 +368,51 @@ export default function ProfilePage() {
                 <div className="flex flex-col gap-[20px] flex-1 w-full">
                   {activeTab === '사건' ? (
                     // 사건 목록
-                    demoCaseData.map((item, index) => (
-                      <div key={index} className="bg-white flex flex-col gap-[10px] px-[30px] py-[20px] rounded-[10px] w-full">
-                        <div className="flex items-center w-full">
-                          <span className="font-bold text-[23px] text-black max-w-[670px] truncate">{item.title}</span>
-                        </div>
-                        <div className="flex items-center justify-between px-[10px] py-[6px] w-full">
-                          <span className="font-light text-[13px] text-black">{item.date}</span>
-                          <div className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80">
-                            <span className="font-normal text-[10px] text-black">대화내용 확인</span>
+                    sessionsLoading ? (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">로딩 중...</span>
+                      </div>
+                    ) : sessions.length > 0 ? (
+                      sessions.map((session, index) => (
+                        <div key={session.session_uuid} className="bg-white flex flex-col gap-[10px] px-[30px] py-[20px] rounded-[10px] w-full">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-[23px] text-black max-w-[670px] truncate">{session.title}</span>
+                            {session.legal_category && (
+                              <span className="text-[13px] text-[#787878] font-normal">{session.legal_category}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between px-[10px] py-[6px] w-full">
+                            <div className="flex flex-col gap-[5px]">
+                              <span className="font-light text-[13px] text-black">
+                                {new Date(session.created_at).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              <span className="font-light text-[11px] text-[#787878]">
+                                메시지 {session.message_count || 0}개
+                              </span>
+                            </div>
+                            <div
+                              className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80"
+                              onClick={() => {
+                                // TODO: 대화 내용 확인 페이지로 이동
+                                console.log('세션 UUID:', session.session_uuid);
+                              }}
+                            >
+                              <span className="font-normal text-[10px] text-black">대화내용 확인</span>
+                            </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">사건 기록이 없습니다.</span>
                       </div>
-                    ))
+                    )
                   ) : (
                     // 변호사 목록 (Figma 디자인과 동일)
                     <div
@@ -395,13 +545,19 @@ export default function ProfilePage() {
                     <div
                       className="w-[150px] h-[150px] bg-cover bg-center rounded-full"
                       style={{
-                        backgroundImage: `url('${imgImage14}')`,
+                        backgroundImage: `url('${profileImagePreview || currentUser.profile_image_url || imgImage12}')`,
                       }}
                     />
                   </div>
-                  <div className="bg-white flex items-center justify-center px-[20px] py-[3px] rounded-[5px] cursor-pointer hover:opacity-80">
+                  <label className="bg-white flex items-center justify-center px-[20px] py-[3px] rounded-[5px] cursor-pointer hover:opacity-80">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
                     <span className="font-bold text-[#08213b] text-[15px]">이미지 수정</span>
-                  </div>
+                  </label>
                 </div>
 
                 {/* 구분선 */}
@@ -557,19 +713,51 @@ export default function ProfilePage() {
                 <div className="flex flex-col gap-[20px] flex-1 w-full">
                   {activeTab === '사건' ? (
                     // 사건 목록
-                    demoCaseData.map((item, index) => (
-                      <div key={index} className="bg-white flex flex-col gap-[10px] px-[30px] py-[20px] rounded-[10px] w-full">
-                        <div className="flex items-center w-full">
-                          <span className="font-bold text-[23px] text-black max-w-[670px] truncate">{item.title}</span>
-                        </div>
-                        <div className="flex items-center justify-between px-[10px] py-[6px] w-full">
-                          <span className="font-light text-[13px] text-black">{item.date}</span>
-                          <div className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80">
-                            <span className="font-normal text-[10px] text-black">대화내용 확인</span>
+                    sessionsLoading ? (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">로딩 중...</span>
+                      </div>
+                    ) : sessions.length > 0 ? (
+                      sessions.map((session, index) => (
+                        <div key={session.session_uuid} className="bg-white flex flex-col gap-[10px] px-[30px] py-[20px] rounded-[10px] w-full">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-[23px] text-black max-w-[670px] truncate">{session.title}</span>
+                            {session.legal_category && (
+                              <span className="text-[13px] text-[#787878] font-normal">{session.legal_category}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between px-[10px] py-[6px] w-full">
+                            <div className="flex flex-col gap-[5px]">
+                              <span className="font-light text-[13px] text-black">
+                                {new Date(session.created_at).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              <span className="font-light text-[11px] text-[#787878]">
+                                메시지 {session.message_count || 0}개
+                              </span>
+                            </div>
+                            <div
+                              className="bg-[#9ec3e5] flex items-center justify-center px-[10px] py-[5px] rounded-[5px] cursor-pointer hover:opacity-80"
+                              onClick={() => {
+                                // TODO: 대화 내용 확인 페이지로 이동
+                                console.log('세션 UUID:', session.session_uuid);
+                              }}
+                            >
+                              <span className="font-normal text-[10px] text-black">대화내용 확인</span>
+                            </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">사건 기록이 없습니다.</span>
                       </div>
-                    ))
+                    )
                   ) : (
                     // 변호사 목록
                     <div
