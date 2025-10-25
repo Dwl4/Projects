@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { lawyerService } from '../api';
 
 const LawyerProfileContent = () => {
   const navigate = useNavigate();
+  const { id } = useParams(); // URL에서 변호사 ID 가져오기
   const [lawyerData, setLawyerData] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   useEffect(() => {
     const fetchLawyerProfile = async () => {
       try {
-        console.log('🔍 변호사 프로필 조회 (보기 모드)...');
+        let userData;
 
-        // API로 변호사 정보 조회
-        const userData = await lawyerService.getCurrentLawyer();
+        // ID가 있으면 특정 변호사 조회, 없으면 자신의 프로필 조회
+        if (id) {
+          console.log('🔍 변호사 상세 조회 (ID:', id, ')...');
+          userData = await lawyerService.getLawyerDetail(id);
+          setIsOwnProfile(false);
+        } else {
+          console.log('🔍 내 변호사 프로필 조회...');
+          userData = await lawyerService.getCurrentLawyer();
+          setIsOwnProfile(true);
+        }
 
         console.log('✅ 변호사 프로필 조회 성공:', userData);
 
@@ -26,23 +36,28 @@ const LawyerProfileContent = () => {
           setProfileImageUrl(userData.profile_image.startsWith('http') ? userData.profile_image : `${baseUrl}${userData.profile_image}`);
         }
 
-        // localStorage에도 저장
-        localStorage.setItem('currentUser', JSON.stringify(userData));
+        // 자신의 프로필일 경우에만 localStorage에 저장
+        if (!id) {
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+        }
       } catch (error) {
         console.error('❌ 변호사 프로필 조회 실패:', error);
 
-        // 에러 발생 시 localStorage에서 로드 시도
-        const currentUser = localStorage.getItem('currentUser');
-        if (currentUser) {
-          console.log('📦 localStorage에서 프로필 로드');
-          const userData = JSON.parse(currentUser);
-          setLawyerData(userData);
+        // 에러 발생 시 localStorage에서 로드 시도 (자신의 프로필일 때만)
+        if (!id) {
+          const currentUser = localStorage.getItem('currentUser');
+          if (currentUser) {
+            console.log('📦 localStorage에서 프로필 로드');
+            const userData = JSON.parse(currentUser);
+            setLawyerData(userData);
+            setIsOwnProfile(true);
+          }
         }
       }
     };
 
     fetchLawyerProfile();
-  }, []);
+  }, [id]);
 
   return (
     <>
@@ -51,41 +66,52 @@ const LawyerProfileContent = () => {
         <div className="py-[30px] h-[100px]">
           <div className="h-[60px] flex items-center">
             <span className="text-[40px] font-bold text-black">{lawyerData?.name || '변호사'}</span>
-            <span className="text-[40px] font-medium text-black ml-[10px]">변호사님 환영합니다!</span>
+            <span className="text-[40px] font-medium text-black ml-[10px]">변호사님{isOwnProfile ? ' 환영합니다!' : ' 프로필'}</span>
           </div>
-          <div className="h-[30px] flex items-center mt-[10px]">
-            <span className="text-[20px] text-black">사용자님에게</span>
-            <span className="text-[20px] font-bold text-black ml-[5px]">{lawyerData?.name || '변호사'}</span>
-            <span className="text-[20px] text-black ml-[5px]">변호사님을 소개해 보세요.</span>
-          </div>
+          {isOwnProfile && (
+            <div className="h-[30px] flex items-center mt-[10px]">
+              <span className="text-[20px] text-black">사용자님에게</span>
+              <span className="text-[20px] font-bold text-black ml-[5px]">{lawyerData?.name || '변호사'}</span>
+              <span className="text-[20px] text-black ml-[5px]">변호사님을 소개해 보세요.</span>
+            </div>
+          )}
         </div>
 
         {/* 구분선과 수정하기 버튼 */}
         <div className="h-[70px] relative">
           {/* 검은색 구분선 */}
           <div className="absolute left-[60px] top-[24px] w-[784px] h-[1px] bg-black mt-[20px]" />
-          {/* 수정하기 버튼 - 오른쪽 끝, 줄 위에 배치 */}
-          <button
-            className="absolute right-[76px] top-[10px] flex items-center justify-center gap-[5px] px-[20px] h-[36px] mt-[20px] cursor-pointer bg-white border-2 border-[#9ec3e5] hover:bg-[#f0f8ff] active:bg-[#e6f3ff] rounded-[8px] shadow-[0px_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0px_3px_6px_rgba(0,0,0,0.15)] transition-all duration-200 z-10"
-            onClick={() => navigate('/lawyer-profile-edit')}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11.5 2L14 4.5L5 13.5H2.5V11L11.5 2Z" stroke="#9ec3e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M9.5 4L12 6.5" stroke="#9ec3e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className="text-[15px] font-bold text-[#9ec3e5]">수정하기</span>
-          </button>
+          {/* 수정하기 버튼 - 자신의 프로필일 때만 표시 */}
+          {isOwnProfile && (
+            <button
+              className="absolute right-[76px] top-[10px] flex items-center justify-center gap-[5px] px-[20px] h-[36px] mt-[20px] cursor-pointer bg-white border-2 border-[#9ec3e5] hover:bg-[#f0f8ff] active:bg-[#e6f3ff] rounded-[8px] shadow-[0px_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0px_3px_6px_rgba(0,0,0,0.15)] transition-all duration-200 z-10"
+              onClick={() => navigate('/lawyer-profile-edit')}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.5 2L14 4.5L5 13.5H2.5V11L11.5 2Z" stroke="#9ec3e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9.5 4L12 6.5" stroke="#9ec3e5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="text-[15px] font-bold text-[#9ec3e5]">수정하기</span>
+            </button>
+          )}
         </div>
 
         {/* 프로필 박스 */}
         <div className="h-[419px] flex gap-[10px] py-[10px]">
           {/* 이미지 */}
-          <div className="w-[300px] h-[399px] overflow-hidden">
-            <img
-              src={profileImageUrl || '/assets/lawyer-pic.png'}
-              alt={lawyerData?.name || '변호사'}
-              className="w-full h-full object-cover"
-            />
+          <div className="w-[300px] h-[399px] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            {profileImageUrl ? (
+              <img
+                src={profileImageUrl}
+                alt={lawyerData?.name || '변호사'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            )}
           </div>
 
           {/* 소개 및 연락처 */}

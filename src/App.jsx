@@ -23,6 +23,7 @@ function App() {
           <Route path="/search-results" element={<LawmatePage />} />
           <Route path="/lawyer-list" element={<LawmatePage />} />
           <Route path="/lawyer-profile" element={<LawmatePage />} />
+          <Route path="/lawyer-profile/:id" element={<LawmatePage />} />
           <Route path="/lawyer-profile-edit" element={<LawmatePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/email-login" element={<EmailLoginPage />} />

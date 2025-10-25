@@ -77,8 +77,9 @@ export default function LawmatePage() {
     if (path === '/profile') return 'profile';
     if (path === '/search-results') return 'search-results';
     if (path === '/lawyer-list') return 'lawyer-list';
-    if (path === '/lawyer-profile') return 'lawyer-profile';
     if (path === '/lawyer-profile-edit') return 'lawyer-profile-edit';
+    if (path.startsWith('/lawyer-profile/')) return 'lawyer-profile';
+    if (path === '/lawyer-profile') return 'lawyer-profile';
     return 'home';
   };
 
