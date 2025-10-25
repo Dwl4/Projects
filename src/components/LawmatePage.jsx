@@ -190,7 +190,22 @@ export default function LawmatePage() {
 
     // 현재 사용자 정보에서 프로필 이미지 가져오기
     const currentUserData = localStorage.getItem('currentUser');
-    const profileImageUrl = currentUserData ? JSON.parse(currentUserData).profile_image_url : null;
+    let profileImageUrl = null;
+
+    if (currentUserData) {
+      try {
+        const userData = JSON.parse(currentUserData);
+        const rawImage = userData.profile_image || userData.profile_image_url;
+
+        if (rawImage) {
+          const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001/api/v1';
+          const baseUrl = API_BASE.replace('/api/v1', '');
+          profileImageUrl = rawImage.startsWith('http') ? rawImage : `${baseUrl}${rawImage}`;
+        }
+      } catch (e) {
+        console.error('프로필 이미지 파싱 실패:', e);
+      }
+    }
 
     // 변호사면 빈 배열, 일반 사용자면 API에서 가져온 세션 사용
     const caseData = isLawyer ? [] : sessions;
@@ -201,11 +216,18 @@ export default function LawmatePage() {
       <aside className="w-[300px] bg-[#95b1d4] h-[300px] flex flex-col items-center justify-center p-[30px]">
         <div className="w-[240px] h-[150px] flex items-center justify-center">
           <div className="w-[150px] h-[150px] relative">
-            <div className="w-full h-full rounded-full overflow-hidden border-2 border-white">
-              <div
-                className="w-full h-full bg-center bg-cover bg-no-repeat"
-                style={{ backgroundImage: `url('${profileImageUrl || imgImage12}')` }}
-              />
+            <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+              {profileImageUrl ? (
+                <div
+                  className="w-full h-full bg-center bg-cover bg-no-repeat"
+                  style={{ backgroundImage: `url('${profileImageUrl}')` }}
+                />
+              ) : (
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              )}
             </div>
           </div>
         </div>

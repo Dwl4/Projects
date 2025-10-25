@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { demoProfileUser, demoCaseData, demoLawyerProfiles } from '../data/demoData';
-import { authService, userService, aiChatService } from '../api';
+import { authService, userService, aiChatService, lawyerService } from '../api';
 
 const imgImage12 = "/assets/Logout_Image.png"; // 기본 프로필 이미지 (사람 아이콘)
 const imgImage14 = "/assets/Login_Image.png";
@@ -26,6 +26,10 @@ export default function ProfilePage() {
   // 사건 기록 상태
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  // 즐겨찾기 변호사 목록 상태
+  const [favoriteLawyers, setFavoriteLawyers] = useState([]);
+  const [favoriteLawyersLoading, setFavoriteLawyersLoading] = useState(false);
 
   // localStorage에서 즐겨찾기 불러오기
   const getFavoritesFromStorage = () => {
@@ -91,6 +95,62 @@ export default function ProfilePage() {
 
     fetchSessions();
   }, []);
+
+  // 즐겨찾기 변호사 목록 가져오기
+  useEffect(() => {
+    const fetchFavoriteLawyers = async () => {
+      if (activeTab !== '변호사') return;
+
+      try {
+        setFavoriteLawyersLoading(true);
+        console.log('🔍 즐겨찾기 변호사 목록 조회...');
+        const data = await lawyerService.getMyFavoriteLawyers();
+        console.log('✅ 즐겨찾기 변호사 목록:', data);
+        setFavoriteLawyers(Array.isArray(data) ? data : []);
+
+        // localStorage에도 즐겨찾기 ID 저장
+        const favoriteIds = new Set(data.map(lawyer => lawyer.id));
+        setFavorites(favoriteIds);
+        localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(favoriteIds)));
+      } catch (error) {
+        console.error('❌ 즐겨찾기 목록 조회 실패:', error);
+        setFavoriteLawyers([]);
+      } finally {
+        setFavoriteLawyersLoading(false);
+      }
+    };
+
+    fetchFavoriteLawyers();
+  }, [activeTab]);
+
+  const toggleFavorite = async (lawyerId) => {
+    try {
+      const isCurrentlyFavorite = favorites.has(lawyerId);
+
+      if (isCurrentlyFavorite) {
+        await lawyerService.removeLawyerFromFavorites(lawyerId);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.delete(lawyerId);
+          localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
+          return newFavorites;
+        });
+        // 목록에서 제거
+        setFavoriteLawyers(prev => prev.filter(lawyer => lawyer.id !== lawyerId));
+      } else {
+        await lawyerService.addLawyerToFavorites(lawyerId);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.add(lawyerId);
+          localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
+          return newFavorites;
+        });
+      }
+    } catch (err) {
+      console.error('즐겨찾기 토글 실패:', err);
+      alert('즐겨찾기 처리에 실패했습니다.');
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -192,24 +252,6 @@ export default function ProfilePage() {
       console.error('에러 상세:', error.response?.data);
       alert('프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
-  };
-
-  const toggleFavorite = (lawyerId) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(lawyerId)) {
-        newFavorites.delete(lawyerId);
-        // 즐겨찾기 해제시 순서에서도 제거
-        setFavoriteOrder(prevOrder => prevOrder.filter(id => id !== lawyerId));
-      } else {
-        newFavorites.add(lawyerId);
-        // 즐겨찾기 추가시 가장 앞으로 이동
-        setFavoriteOrder(prevOrder => [lawyerId, ...prevOrder.filter(id => id !== lawyerId)]);
-      }
-      // localStorage에 저장
-      localStorage.setItem('lawyerFavorites', JSON.stringify(Array.from(newFavorites)));
-      return newFavorites;
-    });
   };
 
   const handleInquiry = () => {
@@ -421,114 +463,152 @@ export default function ProfilePage() {
                       </div>
                     )
                   ) : (
-                    // 변호사 목록 (Figma 디자인과 동일)
-                    <div
-                      className="flex gap-[35px] overflow-x-auto cursor-grab active:cursor-grabbing select-none pb-[20px]"
-                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      {demoLawyerProfiles.filter(lawyer => favorites.has(lawyer.id)).map((lawyer) => (
-                        <div key={lawyer.id} className="bg-[#d9d9d9] flex flex-col gap-[10px] h-[500px] items-start px-[10px] py-[15px] rounded-[10px] w-[250px]">
-                          {/* 이미지와 소개 */}
-                          <div className="flex items-start justify-between w-full">
-                            {/* 소개글 */}
-                            <div className="flex flex-col items-start self-stretch">
-                              <div className="font-normal text-[11px] text-black w-[100px] h-[160px] leading-normal overflow-hidden">
-                                {lawyer.introduction}
-                              </div>
-                            </div>
-                            {/* 이미지 */}
-                            <div className="h-[160px] overflow-hidden relative w-[120px]">
-                              <div className="absolute left-0 top-0">
-                                <div
-                                  className="absolute bg-center bg-cover bg-no-repeat h-[160px] w-[120px] rounded-[5px] top-0"
-                                  style={{
-                                    backgroundImage: `url('${lawyer.image}')`
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
+                    // 변호사 목록 - LawyerListContent와 동일한 카드 디자인
+                    favoriteLawyersLoading ? (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">로딩 중...</span>
+                      </div>
+                    ) : favoriteLawyers.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-[30px] pb-[20px]">
+                      {favoriteLawyers.map((lawyer) => {
+                        // 프로필 이미지 URL 처리
+                        const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001/api/v1';
+                        const baseUrl = API_BASE.replace('/api/v1', '');
+                        const profileImageUrl = lawyer.profile_image
+                          ? (lawyer.profile_image.startsWith('http')
+                              ? lawyer.profile_image
+                              : `${baseUrl}${lawyer.profile_image}`)
+                          : null;
 
-                          {/* 변호사 이름 */}
-                          <div className="flex gap-[10px] items-center justify-end px-[20px] text-black w-full">
-                            <div className="font-normal text-[11px]">변호사</div>
-                            <div className="font-bold text-[15px]">{lawyer.name}</div>
-                          </div>
+                        // 전문분야 개수 계산
+                        const displayedSpecialties = lawyer.specialties?.slice(0, 4) || [];
+                        const remainingSpecialtiesCount = (lawyer.specialties?.length || 0) - displayedSpecialties.length;
 
-                          {/* 전문분야 */}
-                          <div className="flex flex-col gap-[10px] items-start justify-center w-full">
-                            {/* 제목 */}
-                            <div className="flex items-center">
-                              <div className="font-bold text-[12px] text-black">전문 분야</div>
-                            </div>
-                                                          
-                            {/* 내용 */}
-                            <div className="font-normal grid grid-cols-2 gap-y-[5px] text-[10px] w-full">
-                              {lawyer.specialties.map((spec, idx) => (
-                                <div key={idx} className="text-black w-[110px]">
-                                  <ul className="list-disc ml-[15px]">
-                                    <li>{spec}</li>
-                                  </ul>
-                                </div>
-                              ))}
-                              {/* 나머지 개수 */}
-                              <div className="text-[#787878] w-[110px] pl-[20px]">
-                                외 {lawyer.specialtyCount}개
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 주요 경력 */}
-                          <div className="flex flex-col gap-[10px] items-start w-full">
-                            <div className="flex items-center">
-                              <div className="font-bold text-[12px] text-black">주요 경력</div>
-                            </div>
-                            <div className="flex flex-col font-normal gap-[5px] items-start text-[10px] w-[230px]">
-                              {lawyer.experience.map((exp, idx) => (
-                                <div key={idx} className="text-black">
-                                  <ul className="list-disc ml-[15px]">
-                                    <li>{exp}</li>
-                                  </ul>
-                                </div>
-                              ))}
-                              <div className="text-[#787878] pl-[20px]">외 5개</div>
-                            </div>
-                          </div>
-
-                          {/* 활동 지역 */}
-                          <div className="flex flex-col gap-[10px] items-start w-full">
-                            <div className="flex items-center">
-                              <div className="font-bold text-[12px] text-black">활동 지역</div>
-                            </div>
-                            <div className="flex flex-col gap-[5px] items-start w-[230px]">
-                              <div className="font-normal text-[10px] text-black">
-                                <ul className="list-disc ml-[15px]">
-                                  <li>서울·경기·온라인 상담 가능</li>
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 즐겨찾기 및 상담하기 버튼 */}
-                          <div className="flex grow items-center justify-between pl-[10px] w-full min-h-0">
+                        return (
+                        <div key={lawyer.id} className="bg-white rounded-[16px] shadow-[0px_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0px_6px_20px_rgba(0,0,0,0.12)] transition-all duration-300 overflow-hidden cursor-pointer group flex flex-col"
+                          onClick={() => navigate(`/lawyer-profile/${lawyer.id}`)}
+                        >
+                          {/* 프로필 이미지 - 세로 황금비율 (1:1.618) */}
+                          <div className="relative w-full aspect-[1/1.618] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            {profileImageUrl ? (
+                              <img
+                                src={profileImageUrl}
+                                alt={lawyer.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                            )}
+                            {/* 즐겨찾기 버튼 */}
                             <button
-                              onClick={() => toggleFavorite(lawyer.id)}
-                              className="size-[25px] bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80 transition-opacity"
-                              style={{
-                                backgroundImage: `url('${imgImage20}')`
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(lawyer.id);
                               }}
-                            />
-                            <div className="font-bold text-[10px] text-black cursor-pointer hover:underline">
-                              상담하러 가기 →
+                              className="absolute top-[12px] right-[12px] w-[32px] h-[32px] rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-md z-10"
+                            >
+                              <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill={'#ff6b6b'}
+                                stroke={'#ff6b6b'}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                              </svg>
+                            </button>
+                            {/* 인증 배지 */}
+                            {lawyer.is_verified && (
+                              <div className="absolute top-[12px] left-[12px] bg-blue-500 text-white text-[11px] font-bold px-[10px] py-[4px] rounded-full flex items-center gap-[4px]">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                인증
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 카드 본문 */}
+                          <div className="p-[20px] flex flex-col gap-[16px] flex-grow">
+                            {/* 변호사 이름 & 법무법인 */}
+                            <div className="flex flex-col gap-[6px]">
+                              <div className="flex items-center gap-[8px]">
+                                <h3 className="text-[20px] font-bold text-[#1a1a1a]">{lawyer.name}</h3>
+                                <span className="text-[13px] text-gray-500">변호사</span>
+                              </div>
+                              <p className="text-[14px] text-gray-600 font-medium">{lawyer.law_firm || '법률사무소'}</p>
                             </div>
+
+                            {/* 전문 분야 */}
+                            <div className="flex flex-col gap-[10px]">
+                              <p className="text-[13px] font-bold text-gray-700">전문 분야</p>
+                              <div className="flex flex-wrap gap-[6px]">
+                                {displayedSpecialties.length > 0 ? (
+                                  <>
+                                    {displayedSpecialties.map((spec, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="bg-gray-100 text-gray-700 text-[12px] px-[12px] py-[6px] rounded-full font-medium"
+                                      >
+                                        {spec}
+                                      </span>
+                                    ))}
+                                    {remainingSpecialtiesCount > 0 && (
+                                      <span className="bg-gray-100 text-gray-500 text-[12px] px-[12px] py-[6px] rounded-full font-medium">
+                                        +{remainingSpecialtiesCount}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-[12px] text-gray-400">전문분야 미등록</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 활동 지역 */}
+                            {lawyer.region && (
+                              <div className="flex items-center gap-[8px] pt-[8px] border-t border-gray-100">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                  <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span className="text-[13px] text-gray-600">{lawyer.region}</span>
+                              </div>
+                            )}
+
+                            {/* Spacer - 버튼을 하단으로 밀어내기 */}
+                            <div className="flex-grow"></div>
+
+                            {/* 프로필 확인 버튼 - 하단 고정 */}
+                            <button
+                              className="w-full bg-gradient-to-r from-[#9ec3e5] to-[#7da9d3] hover:from-[#7da9d3] hover:to-[#6b98c2] text-white text-[14px] font-bold py-[12px] rounded-[10px] transition-all duration-200 shadow-[0px_2px_8px_rgba(158,195,229,0.3)] hover:shadow-[0px_4px_12px_rgba(158,195,229,0.4)] flex items-center justify-center gap-[6px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/lawyer-profile/${lawyer.id}`);
+                              }}
+                            >
+                              <span>프로필 확인하기</span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                              </svg>
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        );
+                      })}
+                      </div>
+                    ) : (
+                      <div className="bg-white flex items-center justify-center px-[30px] py-[40px] rounded-[10px] w-full">
+                        <span className="text-[15px] text-[#787878]">즐겨찾기한 변호사가 없습니다.</span>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
