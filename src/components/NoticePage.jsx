@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NoticeDetail from './NoticeDetail';
-import { noticeService } from '../api';
+import { demoNotices } from '../data/demoData';
 
 export default function NoticePage() {
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -8,55 +8,35 @@ export default function NoticePage() {
   const [currentPageGroup, setCurrentPageGroup] = useState(0);
   const [notices, setNotices] = useState([]);
   const [pinnedNotices, setPinnedNotices] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  // 공지사항 목록 조회
+  // 공지사항 목록 조회 (데모 데이터 사용)
   useEffect(() => {
-    fetchNotices();
+    // 고정 공지사항과 일반 공지사항 분리
+    const pinned = demoNotices.filter(notice => notice.category === '공지');
+    const regular = demoNotices.filter(notice => notice.category !== '공지');
+
+    setPinnedNotices(pinned);
+
+    // 페이지네이션 적용
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setNotices(regular.slice(startIndex, endIndex));
+
+    // 총 페이지 수 계산
+    const total = Math.ceil(regular.length / itemsPerPage);
+    setTotalPages(total);
   }, [currentPage]);
 
-  const fetchNotices = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await noticeService.getNotices({
-        page: currentPage,
-        limit: itemsPerPage
-      });
-
-      // 고정 공지사항과 일반 공지사항 분리
-      const pinned = response.data.filter(notice => notice.is_pinned);
-      const regular = response.data.filter(notice => !notice.is_pinned);
-
-      setPinnedNotices(pinned);
-      setNotices(regular);
-
-      // 총 페이지 수 계산 (API 응답에 pagination 정보가 있다면 사용)
-      if (response.pagination) {
-        setTotalPages(response.pagination.totalPages);
-      }
-    } catch (err) {
-      console.error('공지사항 목록 조회 실패:', err);
-      setError('공지사항을 불러오는데 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 공지사항 클릭 핸들러
-  const handleNoticeClick = async (notice) => {
-    try {
-      // 상세 정보 조회
-      const detailData = await noticeService.getNoticeDetail(notice.id);
-      setSelectedNotice(detailData.data);
-    } catch (err) {
-      console.error('공지사항 상세 조회 실패:', err);
-      // 실패 시 기본 정보로 표시
-      setSelectedNotice(notice);
-    }
+  const handleNoticeClick = (notice) => {
+    // fullContent가 있으면 사용, 없으면 content 사용
+    const detailNotice = {
+      ...notice,
+      content: notice.fullContent || notice.content
+    };
+    setSelectedNotice(detailNotice);
   };
 
   // 목록으로 돌아가기
@@ -91,36 +71,32 @@ export default function NoticePage() {
   };
 
   // 이전/다음 공지사항 이동
-  const handlePrevious = async () => {
+  const handlePrevious = () => {
     if (selectedNotice) {
-      const allNotices = [...pinnedNotices, ...notices];
+      const allNotices = demoNotices;
       const currentIndex = allNotices.findIndex(n => n.id === selectedNotice.id);
       if (currentIndex > 0) {
         const prevNotice = allNotices[currentIndex - 1];
-        try {
-          const detailData = await noticeService.getNoticeDetail(prevNotice.id);
-          setSelectedNotice(detailData.data);
-        } catch (err) {
-          console.error('이전 공지사항 조회 실패:', err);
-          setSelectedNotice(prevNotice);
-        }
+        const detailNotice = {
+          ...prevNotice,
+          content: prevNotice.fullContent || prevNotice.content
+        };
+        setSelectedNotice(detailNotice);
       }
     }
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (selectedNotice) {
-      const allNotices = [...pinnedNotices, ...notices];
+      const allNotices = demoNotices;
       const currentIndex = allNotices.findIndex(n => n.id === selectedNotice.id);
       if (currentIndex < allNotices.length - 1) {
         const nextNotice = allNotices[currentIndex + 1];
-        try {
-          const detailData = await noticeService.getNoticeDetail(nextNotice.id);
-          setSelectedNotice(detailData.data);
-        } catch (err) {
-          console.error('다음 공지사항 조회 실패:', err);
-          setSelectedNotice(nextNotice);
-        }
+        const detailNotice = {
+          ...nextNotice,
+          content: nextNotice.fullContent || nextNotice.content
+        };
+        setSelectedNotice(detailNotice);
       }
     }
   };
@@ -151,23 +127,8 @@ export default function NoticePage() {
         <span className="text-[16px] text-black">조회 순 ▼</span>
       </div>
 
-      {/* 로딩 상태 */}
-      {loading && (
-        <div className="w-[900px] h-[400px] flex items-center justify-center">
-          <p className="text-[18px] text-gray-600">로딩 중...</p>
-        </div>
-      )}
-
-      {/* 에러 상태 */}
-      {error && (
-        <div className="w-[900px] h-[400px] flex items-center justify-center">
-          <p className="text-[18px] text-red-600">{error}</p>
-        </div>
-      )}
-
       {/* 공지사항 목록 */}
-      {!loading && !error && (
-        <div className="w-[900px] space-y-[16px]">
+      <div className="w-[900px] space-y-[16px]">
           {/* 고정 공지사항 */}
           {pinnedNotices.map((notice) => (
             <div
@@ -182,9 +143,7 @@ export default function NoticePage() {
                     <span className="text-[14px] font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded">고정</span>
                     <h2 className="text-[22px] font-bold text-black leading-[38px]">{notice.title}</h2>
                   </div>
-                  <span className="text-[14px] text-black">
-                    {new Date(notice.created_at).toLocaleDateString('ko-KR')}
-                  </span>
+                  <span className="text-[14px] text-black">{notice.date}</span>
                 </div>
 
                 {/* 내용과 조회수 */}
@@ -209,9 +168,7 @@ export default function NoticePage() {
                 {/* 제목과 날짜 */}
                 <div className="flex items-center justify-between h-[45px] mb-[5px]">
                   <h2 className="text-[22px] font-bold text-black leading-[38px]">{notice.title}</h2>
-                  <span className="text-[14px] text-black">
-                    {new Date(notice.created_at).toLocaleDateString('ko-KR')}
-                  </span>
+                  <span className="text-[14px] text-black">{notice.date}</span>
                 </div>
 
                 {/* 내용과 조회수 */}
@@ -225,17 +182,16 @@ export default function NoticePage() {
             </div>
           ))}
 
-          {/* 공지사항이 없을 때 */}
-          {pinnedNotices.length === 0 && notices.length === 0 && (
-            <div className="w-[900px] h-[400px] flex items-center justify-center">
-              <p className="text-[18px] text-gray-600">등록된 공지사항이 없습니다.</p>
-            </div>
-          )}
-        </div>
-      )}
+        {/* 공지사항이 없을 때 */}
+        {pinnedNotices.length === 0 && notices.length === 0 && (
+          <div className="w-[900px] h-[400px] flex items-center justify-center">
+            <p className="text-[18px] text-gray-600">등록된 공지사항이 없습니다.</p>
+          </div>
+        )}
+      </div>
 
       {/* 페이지네이션 */}
-      {!loading && !error && totalPages > 0 && (
+      {totalPages > 0 && (
         <div className="px-[60px] h-[200px] flex items-center justify-center">
           <div className="flex items-center gap-[20px] w-[320px]">
             {currentPageGroup > 0 && (
