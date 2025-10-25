@@ -22,6 +22,7 @@ const imgImage14 = "/assets/Login_Image.png";
 export default function LawmatePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('Index');
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,40 +102,41 @@ export default function LawmatePage() {
     setActiveSection(getActiveSectionFromPath());
   }, [location.pathname]);
 
+  // 사건 기록 상태 (상위 컴포넌트로 이동)
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  // 채팅 세션 목록 가져오기 (한 번만 실행)
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const isLawyer = localStorage.getItem('isLawyer') === 'true';
+
+      // 변호사가 아니고 로그인되어 있으면 세션 조회
+      if (!isLawyer && isLoggedIn) {
+        try {
+          setSessionsLoading(true);
+          const data = await aiChatService.getMySessions(1, 5); // 최대 5개만 표시
+          setSessions(data.items || []);
+        } catch (error) {
+          console.error('세션 목록 조회 실패:', error);
+          setSessions([]);
+        } finally {
+          setSessionsLoading(false);
+        }
+      }
+    };
+
+    fetchSessions();
+  }, [isLoggedIn]); // isLoggedIn만 의존성으로
+
   // 로그인된 사용자를 위한 사이드바 컴포넌트
   const LoggedInSidebar = () => {
     // 변호사 여부 확인
     const isLawyer = localStorage.getItem('isLawyer') === 'true';
 
-    // 사건 기록 상태
-    const [sessions, setSessions] = useState([]);
-    const [loading, setLoading] = useState(false);
-
     // 현재 사용자 정보에서 프로필 이미지 가져오기
     const currentUserData = localStorage.getItem('currentUser');
     const profileImageUrl = currentUserData ? JSON.parse(currentUserData).profile_image_url : null;
-
-    // 채팅 세션 목록 가져오기
-    useEffect(() => {
-      const fetchSessions = async () => {
-        // 변호사가 아니고 로그인되어 있으면 세션 조회
-        if (!isLawyer && isLoggedIn) {
-          try {
-            setLoading(true);
-            const data = await aiChatService.getMySessions(1, 5); // 최대 5개만 표시
-            setSessions(data.items || []);
-          } catch (error) {
-            console.error('세션 목록 조회 실패:', error);
-            // 에러 시 빈 배열 유지
-            setSessions([]);
-          } finally {
-            setLoading(false);
-          }
-        }
-      };
-
-      fetchSessions();
-    }, [isLawyer, isLoggedIn]);
 
     // 변호사면 빈 배열, 일반 사용자면 API에서 가져온 세션 사용
     const caseData = isLawyer ? [] : sessions;
@@ -207,7 +209,7 @@ export default function LawmatePage() {
 
           {/* 사건 목록 */}
           <div className="space-y-[0px]">
-            {loading ? (
+            {sessionsLoading ? (
               <div className="py-[20px] px-[30px]">
                 <p className="text-[13px] text-[#787878] font-bold text-center">로딩 중...</p>
               </div>
@@ -384,17 +386,28 @@ export default function LawmatePage() {
                       {/* 입력창 */}
                       <input
                         type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && searchQuery.trim()) {
+                            navigate('/search-results', { state: { initialQuery: searchQuery } });
+                          }
+                        }}
                         placeholder="궁금한 사항을 물어봐 주세요!"
-                        className="absolute left-[16px] top-1/2 transform -translate-y-1/2 
+                        className="absolute left-[16px] top-1/2 transform -translate-y-1/2
                                    w-[680px] h-[35px] bg-transparent outline-none text-[16px] text-[#333]"
                       />
-                
+
                       {/* 돋보기 아이콘 */}
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
                         <div
                           className="w-10 h-10 bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80"
                           style={{ backgroundImage: `url('${imgMagnifyingLens}')` }}
-                          onClick={() => navigate("/search-results")}
+                          onClick={() => {
+                            if (searchQuery.trim()) {
+                              navigate('/search-results', { state: { initialQuery: searchQuery } });
+                            }
+                          }}
                         />
                       </div>
                   </div>

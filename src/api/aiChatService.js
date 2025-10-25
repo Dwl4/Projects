@@ -8,10 +8,17 @@ import api from './config';
  * @param {string} initialQuery - 초기 질문
  */
 export const createSession = async (title, initialQuery) => {
-  const response = await api.post('/ai-chat/sessions', {
+  const requestData = {
     title,
     initial_query: initialQuery,
-  });
+  };
+
+  console.log('📤 [POST /ai-chat/sessions] Request:', requestData);
+
+  const response = await api.post('/ai-chat/sessions', requestData);
+
+  console.log('📥 [POST /ai-chat/sessions] Response:', response.data);
+
   return response.data;
 };
 
@@ -21,10 +28,17 @@ export const createSession = async (title, initialQuery) => {
  * @param {string} message - 메시지 내용
  */
 export const chatWithAI = async (sessionUuid, message) => {
-  const response = await api.post('/ai-chat/chat', {
+  const requestData = {
     session_uuid: sessionUuid,
     message,
-  });
+  };
+
+  console.log('📤 [POST /ai-chat/chat] Request:', requestData);
+
+  const response = await api.post('/ai-chat/chat', requestData);
+
+  console.log('📥 [POST /ai-chat/chat] Response:', response.data);
+
   return response.data;
 };
 
@@ -45,7 +59,12 @@ export const getMySessions = async (page = 1, limit = 20) => {
  * @param {string} sessionUuid
  */
 export const getSessionMessages = async (sessionUuid) => {
+  console.log(`📤 [GET /ai-chat/sessions/${sessionUuid}/messages] Request`);
+
   const response = await api.get(`/ai-chat/sessions/${sessionUuid}/messages`);
+
+  console.log(`📥 [GET /ai-chat/sessions/${sessionUuid}/messages] Response:`, response.data);
+
   return response.data;
 };
 

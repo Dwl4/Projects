@@ -1,321 +1,271 @@
-import React, { useState } from 'react';
-import { demoLawyerProfiles } from '../data/demoData';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { aiChatService } from '../api';
 
-const imgLawIcon = "/assets/law-icon.png";
-const imgLawHammer = "/assets/law-hammer.png";
-const imgLawyer = "/assets/Lawyer.png";
 const imgMagnifyingLens = "/assets/Search.png";
-const imgFavorite = "/assets/favorite.png";
 
 function SearchResultsContent() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showLawyerList, setShowLawyerList] = useState(false);
-  const [favorites, setFavorites] = useState(new Set());
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const location = useLocation();
+  const initialQuery = location.state?.initialQuery || '';
 
-  const userQuestion = "3달 전에 일했던 가게에서 사장님이 알바비를 3달째 안주고 있어 달라고 했더니 연락을 안보고 전화를 하니까 그냥 끊어 버렸어 난 사장님을 고소 하고 싶어";
+  const [sessionUuid, setSessionUuid] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const messagesEndRef = useRef(null);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      console.log('검색:', searchQuery);
+  // 자동 스크롤
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // 1️⃣ 컴포넌트 초기화 - 세션 생성
+  useEffect(() => {
+    // 이미 세션이 있으면 실행하지 않음 (중복 방지)
+    if (!sessionUuid) {
+      initializeSession();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 2️⃣ 세션 생성
+  const initializeSession = async () => {
+    try {
+      console.log('🔵 세션 생성 시작', { initialQuery });
+
+      // initialQuery가 있으면 그것을 title과 initial_query로 사용
+      const title = initialQuery
+        ? (initialQuery.length > 50 ? initialQuery.substring(0, 50) + '...' : initialQuery)
+        : 'AI 법률 상담';
+
+      // API 호출: POST /ai-chat/sessions
+      // title과 initial_query 모두 필수로 전달
+      const session = await aiChatService.createSession(
+        title,
+        initialQuery || ''  // 빈 문자열이라도 전달
+      );
+
+      console.log('✅ 세션 생성 성공', session);
+
+      // UUID를 state에 저장
+      setSessionUuid(session.session_uuid);
+      console.log('💾 저장된 sessionUuid:', session.session_uuid);
+
+      // initialQuery가 있으면 메시지 목록에 추가 (서버에서 이미 처리됨)
+      if (initialQuery) {
+        // 세션 메시지 목록 조회
+        setLoading(true);
+        try {
+          console.log('🔵 세션 메시지 조회', { sessionUuid: session.session_uuid });
+          const messagesData = await aiChatService.getSessionMessages(session.session_uuid);
+          console.log('✅ 메시지 목록 받음', messagesData);
+
+          // 메시지 목록 설정
+          if (messagesData.items && messagesData.items.length > 0) {
+            setMessages(messagesData.items);
+          }
+        } catch (err) {
+          console.error('메시지 조회 실패:', err);
+          setError('메시지를 불러오는데 실패했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('세션 생성 실패:', err);
+      setError('세션 생성에 실패했습니다.');
     }
   };
 
-  const toggleFavorite = (lawyerId) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(lawyerId)) {
-        newFavorites.delete(lawyerId);
-      } else {
-        newFavorites.add(lawyerId);
+  // 3️⃣ 메시지 전송
+  const handleSendMessage = async () => {
+    // 1. 빈 메시지나 세션 없으면 중단
+    if (!inputMessage.trim() || !sessionUuid || loading) return;
+
+    // 2. 메시지 저장 & 입력창 초기화
+    const userMessage = inputMessage.trim();
+    setInputMessage('');  // 입력창 비우기
+    setLoading(true);     // 로딩 시작
+
+    // 3. 사용자 메시지 즉시 화면에 표시 (낙관적 업데이트)
+    const tempUserMessageId = `temp_${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempUserMessageId,
+        role: 'user',
+        content: userMessage,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    try {
+      // 4. API 호출: POST /ai-chat/chat
+      console.log('🔵 메시지 전송', { sessionUuid, message: userMessage });
+      const response = await aiChatService.chatWithAI(sessionUuid, userMessage);
+      console.log('✅ AI 응답 받음', response);
+
+      // 5. 서버에서 전체 메시지 목록 다시 가져오기 (동기화)
+      console.log('🔵 메시지 목록 다시 조회 (동기화)');
+      const messagesData = await aiChatService.getSessionMessages(sessionUuid);
+      console.log('✅ 메시지 목록 받음', messagesData);
+
+      if (messagesData.items && messagesData.items.length > 0) {
+        setMessages(messagesData.items);
       }
-      return newFavorites;
-    });
-  };
+    } catch (err) {
+      console.error('메시지 전송 실패:', err);
+      setError('메시지 전송에 실패했습니다.');
 
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setStartX(e.pageX - e.currentTarget.offsetLeft);
-    setScrollLeft(e.currentTarget.scrollLeft);
-  };
+      // 임시 사용자 메시지 제거
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempUserMessageId));
 
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const x = e.pageX - e.currentTarget.offsetLeft;
-    const walk = (x - startX) * 2;
-    e.currentTarget.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
+      // 에러 메시지를 화면에 표시
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: 'error',
+          content: '죄송합니다. 메시지 전송에 실패했습니다. 다시 시도해주세요.',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setLoading(false);  // 로딩 종료
+    }
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-screen flex flex-col">
+      {/* 안내 문구 */}
+      <div className="flex-shrink-0 px-[60px] pt-[20px] pb-[10px] border-b border-gray-200">
+        <p className="text-[14px] text-center text-[#999]">이 서비스는 법률 자문이 아닌 단순 참고용입니다</p>
+        <h1 className="text-[24px] font-bold text-center mt-[10px]">AI 법률 상담</h1>
+        {error && (
+          <p className="text-[14px] text-center text-red-500 mt-[10px]">{error}</p>
+        )}
+      </div>
 
-      {/* 메인 컨텐츠 */}
-      <div className="px-[60px] pt-[10px] py-[50px]">
-        {/* 검색 키워드 */}
-        <div className="mb-[30px]">
-          <p className="text-[14px] text-center text-[#999]">이 서비스는 법률 자문이 아닌 단순 참고용입니다</p>
-          <h1 className="text-[24px] font-bold"># 사건1</h1>
-        </div>
-
-        {/* 사용자 질문 */}
-        <div className="mb-[40px] flex justify-end">
-          <div className="bg-[#ACCEE9] rounded-[10px] px-[20px] py-[15px] max-w-[500px]">
-            <p className="text-[14px] text-[#082135] leading-relaxed">
-              {userQuestion}
-            </p>
-          </div>
-        </div>
-
-        {/* 답변 섹션 */}
-        <div className="mb-[40px]">
-          <h2 className="text-[20px] font-bold mb-[20px]">임금체불은 형사처벌 대상입니다.</h2>
-          <p className="text-[15px] text-[#333] mb-[30px] leading-relaxed">
-            사장님이 알바비를 고의로 주지 않고 있다면, 근로기준법 제36조, 제109조 위반으로 **형사처벌(벌금 또는 징역)**이 가능합니다.
-          </p>
-
-          {/* 관련 법령 */}
-          <div className="space-y-[20px]">
-            <div className="flex items-start gap-[15px]">
-              <div className="w-[40px] h-[40px] bg-white items-center justify-center flex-shrink-0">
-                <img src={imgLawIcon} alt="법령" className="w-[32px] h-[40px]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-[10px] mb-[10px]">
-                  <span className="text-[16px] text-[#5F9AD0] font-bold">관련 법령</span>
-                  <span className="text-[10px] font-bold text-[#767676] bg-[#D9D9D9] px-[7px] py-[2px] rounded">더보기</span>
-                </div>
-                <div className="mb-[15px]">
-                  <p className="text-[14px] font-bold mb-[[2px]">근로기준법 제36조 (금품 청산)</p>
-                  <p className="text-[14px] text-[#555] leading-relaxed">
-                    사용자는 근로자가 사망 또는 퇴직한 경우에는 그 지급 사유가 발생한 때부터 14일 이내에 임금, 보상금, 그 밖의 일체의 금품을 지급하여야 한다. 다만, 특별한 사정이 있을 경우에는 당사자 간의 합의에 따라 지급 기일을 연장할 수 있습니다.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[14px] font-bold mb-[[2px]">근로기준법 제109조 (벌칙)</p>
-                  <p className="text-[14px] text-[#555] leading-relaxed">
-                    제36조, 제42조, 제43조, 제45조, 제55조, 제63조 또는 제70조의 규정을 위반한 자는 3년 이하의 징역 또는 2,000만 원 이하의 벌금에 처한다.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 관련 판례 */}
-            <div className="flex items-start gap-[15px]">
-              <div className="w-[60px] h-[37px] bg-white items-center justify-center flex-shrink-0">
-                <img src={imgLawHammer} alt="판례" className="w-[60px] h-[37px]" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-[10px] mb-[10px]">
-                  <span className="text-[16px] text-[#5F9AD0] font-bold">관련 판례</span>
-                  <span className="text-[10px] font-bold text-[#767676] bg-[#D9D9D9] px-[7px] py-[2px] rounded">더보기</span>
-                </div>
-                <div className="mb-[15px]">
-                  <p className="text-[15px] font-bold mb-[10px]">대법원 1994. 10. 28. 선고 94다26615 판결</p>
-                  <ul className="text-[14px] text-[#555] space-y-[[2px]">
-                    <li>• 사건명: 체불임금</li>
-                    <li>• 판시사항: 근로기준법상 통상임금의 정의 및 가족수당, 근속수당의 통상임금 포함 여부</li>
-                    <li>• 판결요지: 근로자에게 정기적·일률적으로 지급되는 고정급은 통상임금에 해당하며, 가족수당 및 근속수당은 통상임금에 포함되지 않는다.</li>
-                  </ul>
-                </div>
-                <div className="space-y-[15px]">
-                  <div>
-                    <p className="text-[14px] font-bold mb-[5px]">대법원 1992. 7. 14. 선고 91다5501 판결</p>
-                    <ul className="text-[14px] text-[#555] space-y-[2px]">
-                      <li>• 사건명: 체불임금</li>
-                      <li>• 판시사항: 미혼자 등 가족이 없는 근로자에게도 일률적으로 지급되는 가족수당의 통상임금 포함 여부</li>
-                      <li>• 판결요지: 가족이 없는 근로자에게도 일률적으로 지급되는 가족수당은 통상임금에 해당한다.</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-bold mb-[5px]">대법원 2001. 2. 23. 선고 2001도204 판결</p>
-                    <ul className="text-[14px] text-[#555] space-y-[2px]">
-                      <li>• 사건명: 근로기준법위반</li>
-                      <li>• 판시사항: 임금이나 퇴직금을 지급할 수 없는 불가피한 사정이 인정되는 경우, 근로기준법 위반범죄의 책임조각사유가 되는지 여부</li>
-                      <li>• 판결요지: 사용자가 모든 성의와 노력을 다했음에도 불가피한 사정으로 임금을 지급하지 못한 경우에는 책임이 조각될 수 있다.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 대응방법 */}
-          <div className="mt-[40px]">
-            <h3 className="text-[16px] font-bold mb-[2px]">대응방법(참고)</h3>
-            <div className="space-y-[2px] text-[14px] text-[#555]">
-              <p>1. 내용증명 발송: 사장님에게 임금 지급을 요구하는 내용증명을 보내세요.</p>
-              <p>2. 고용노동부 진정: 관할 고용노동지청에 임금 체불에 대한 진정을 제기할 수 있습니다.</p>
-              <p>3. 민사소송 제기: 임금 청구를 위한 민사소송을 제기할 수 있습니다.</p>
-              <p>4. 형사 고소: 근로기준법 위반으로 형사 고소를 진행할 수 있습니다.​</p>
-            </div>
-          </div>
-
-          {/* 변호사 시스템 버튼 */}
-          <div className="mt-[40px] flex justify-center">
-            <button
-              onClick={() => setShowLawyerList(!showLawyerList)}
-              className="w-[200px] h-[40px] bg-white border-2 border-[#9EC3E5] flex items-center justify-center gap-[10px] shadow-md hover:bg-gray-50 transition-colors"
-            >
-              <img src={imgLawyer} alt="변호사" className="w-[24px] h-[24px] object-contain" />
-              <span className="text-[14px] text-black">
-                {showLawyerList ? '리스트 가리기' : '관련 변호사 리스트 보기'}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* 변호사 리스트 섹션 */}
-        {showLawyerList && (
-          <div className="mt-[60px] px-[20px] pb-[50px]">
-            <h2 className="text-[24px] font-bold text-black mb-[30px]">관련 변호사 리스트</h2>
-            <div
-              className="flex gap-[35px] overflow-x-auto pb-[20px] cursor-grab active:cursor-grabbing select-none"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseLeave}
-            >
-              {demoLawyerProfiles.map((lawyer) => (
-                <div key={lawyer.id} className="bg-[#d9d9d9] flex flex-col gap-[10px] h-[500px] items-start px-[10px] py-[15px] rounded-[10px] w-[250px]">
-                  {/* 이미지와 소개 */}
-                  <div className="flex items-start justify-between w-full">
-                    {/* 소개글 */}
-                    <div className="flex flex-col items-start self-stretch">
-                      <div className="font-normal text-[11px] text-black w-[100px] h-[160px] leading-normal overflow-hidden">
-                        {lawyer.introduction}
-                      </div>
-                    </div>
-                    {/* 이미지 */}
-                    <div className="h-[160px] overflow-hidden relative w-[120px]">
-                      <div className="absolute left-0 top-0">
-                        <div
-                          className="absolute bg-center bg-cover bg-no-repeat h-[160px] w-[120px] rounded-[5px] top-0"
-                          style={{
-                            backgroundImage: `url('${lawyer.image}')`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 변호사 이름 */}
-                  <div className="flex gap-[10px] items-center justify-end px-[20px] text-black w-full">
-                    <div className="font-normal text-[11px]">변호사</div>
-                    <div className="font-bold text-[15px]">{lawyer.name}</div>
-                  </div>
-
-                  {/* 전문분야 */}
-                  <div className="flex flex-col gap-[10px] items-start justify-center w-full">
-                    <div className="flex items-center">
-                      <div className="font-bold text-[12px] text-black">전문 분야</div>
-                    </div>
-
-                    <div className="font-normal grid grid-cols-2 gap-y-[5px] text-[10px] w-full">
-                      {lawyer.specialties.map((spec, idx) => (
-                        <div key={idx} className="text-black w-[110px]">
-                          <ul className="list-disc ml-[15px]">
-                            <li>{spec}</li>
-                          </ul>
-                        </div>
-                      ))}
-                      <div className="text-[#787878] w-[110px] pl-[20px]">
-                        외 {lawyer.specialtyCount}개
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 주요 경력 */}
-                  <div className="flex flex-col gap-[10px] items-start w-full">
-                    <div className="flex items-center">
-                      <div className="font-bold text-[12px] text-black">주요 경력</div>
-                    </div>
-                    <div className="flex flex-col font-normal gap-[5px] items-start text-[10px] w-[230px]">
-                      {lawyer.experience.map((exp, idx) => (
-                        <div key={idx} className="text-black">
-                          <ul className="list-disc ml-[15px]">
-                            <li>{exp}</li>
-                          </ul>
-                        </div>
-                      ))}
-                      <div className="text-[#787878] pl-[20px]">외 5개</div>
-                    </div>
-                  </div>
-
-                  {/* 활동 지역 */}
-                  <div className="flex flex-col gap-[10px] items-start w-full">
-                    <div className="flex items-center">
-                      <div className="font-bold text-[12px] text-black">활동 지역</div>
-                    </div>
-                    <div className="flex flex-col gap-[5px] items-start w-[230px]">
-                      <div className="font-normal text-[10px] text-black">
-                        <ul className="list-disc ml-[15px]">
-                          <li>서울·경기·온라인 상담 가능</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 즐겨찾기 및 상담하기 버튼 */}
-                  <div className="flex grow items-center justify-between pl-[10px] w-full min-h-0">
-                    <button
-                      onClick={() => toggleFavorite(lawyer.id)}
-                      className="size-[25px] bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80 transition-opacity"
-                      style={{
-                        backgroundImage: `url('${imgFavorite}')`,
-                        filter: favorites.has(lawyer.id) ? 'none' : 'grayscale(100%)'
-                      }}
-                    />
-                    <div className="font-bold text-[10px] text-black cursor-pointer hover:underline">
-                      상담하러 가기 →
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* 채팅 메시지 영역 */}
+      <div className="flex-1 overflow-y-auto px-[60px] py-[30px] space-y-[20px]" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+        {messages.length === 0 && !loading && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-[18px] text-[#999] mb-[20px]">
+                법률 관련 궁금한 사항을 물어보세요
+              </p>
+              <p className="text-[14px] text-[#bbb]">
+                AI가 관련 법령과 판례를 찾아 답변해드립니다
+              </p>
             </div>
           </div>
         )}
 
+        {messages.map((message, index) => (
+          <div
+            key={message.id || index}
+            className={`flex ${
+              message.role === 'user'
+                ? 'justify-end'
+                : message.role === 'error'
+                ? 'justify-center'
+                : 'justify-start'
+            }`}
+          >
+            {message.role === 'user' ? (
+              // 사용자 메시지
+              <div className="bg-[#ACCEE9] rounded-[15px] px-[20px] py-[15px] max-w-[600px]">
+                <p className="text-[15px] text-[#082135] leading-relaxed whitespace-pre-wrap">
+                  {message.content}
+                </p>
+              </div>
+            ) : message.role === 'error' ? (
+              // 에러 메시지
+              <div className="bg-red-100 border-2 border-red-300 rounded-[15px] px-[25px] py-[15px] max-w-[500px]">
+                <p className="text-[14px] text-red-700">
+                  {message.content}
+                </p>
+              </div>
+            ) : (
+              // AI 응답
+              <div className="bg-white border-2 border-[#9EC3E5] rounded-[15px] px-[25px] py-[20px] max-w-[700px] shadow-sm">
+                {message.legal_category && (
+                  <div className="mb-[10px]">
+                    <span className="inline-block bg-[#5F9AD0] text-white text-[12px] px-[10px] py-[4px] rounded-full">
+                      {message.legal_category}
+                    </span>
+                  </div>
+                )}
+                <p className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
+                  {message.content}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
 
-        {/* 하단 검색창 */}
-        <section className="flex justify-center pb-[50px] mt-[60px]">
-          <div className="relative">
-            <div className="w-[585px] h-[50px] bg-[#d9d9d9] relative">
-              <div className="w-[585px] h-[50px] bg-[#d9d9d9] shadow-[5px_6px_0px_#95b1d4]" />
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white border-2 border-[#9EC3E5] rounded-[15px] px-[25px] py-[20px]">
+              <div className="flex items-center gap-[8px]">
+                <div className="w-[8px] h-[8px] bg-[#5F9AD0] rounded-full animate-bounce"></div>
+                <div className="w-[8px] h-[8px] bg-[#5F9AD0] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-[8px] h-[8px] bg-[#5F9AD0] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* 입력 영역 */}
+      <div className="flex-shrink-0 px-[60px] py-[30px] border-t border-gray-200 bg-white">
+        <div className="flex justify-center">
+          <div className="relative w-[800px]">
+            <div className="w-full h-[60px] bg-[#d9d9d9] relative rounded-[10px]">
+              <div className="w-full h-full bg-[#d9d9d9] shadow-[3px_4px_0px_#95b1d4] rounded-[10px]" />
 
               {/* 입력창 */}
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="궁금한 사항을 물어봐 주세요!"
-                className="absolute left-[16px] top-1/2 transform -translate-y-1/2
-                           w-[520px] h-[35px] bg-transparent outline-none text-[16px] text-[#333]"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={sessionUuid ? "추가 질문을 입력하세요..." : "세션을 생성하는 중..."}
+                disabled={loading || !sessionUuid}
+                className="absolute left-[20px] top-1/2 transform -translate-y-1/2
+                           w-[calc(100%-100px)] h-[40px] bg-transparent outline-none text-[16px] text-[#333] placeholder-gray-500
+                           disabled:cursor-not-allowed"
               />
 
-              {/* 돋보기 아이콘 */}
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+              {/* 전송 버튼 */}
+              <button
+                onClick={handleSendMessage}
+                disabled={loading || !inputMessage.trim() || !sessionUuid}
+                className="absolute right-[15px] top-1/2 transform -translate-y-1/2"
+              >
                 <div
-                  className="w-10 h-10 bg-center bg-cover bg-no-repeat cursor-pointer hover:opacity-80"
+                  className={`w-[45px] h-[45px] bg-center bg-cover bg-no-repeat transition-opacity ${
+                    loading || !inputMessage.trim() || !sessionUuid
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'cursor-pointer hover:opacity-80'
+                  }`}
                   style={{ backgroundImage: `url('${imgMagnifyingLens}')` }}
-                  onClick={handleSearch}
                 />
-              </div>
+              </button>
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
