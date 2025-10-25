@@ -49,13 +49,23 @@ export default function ProfilePage() {
     const fetchUserData = async () => {
       try {
         const userData = await authService.getCurrentUser();
+        console.log('📥 사용자 정보 받음:', userData);
+
+        // profile_image 경로를 완전한 URL로 변환
+        if (userData.profile_image && !userData.profile_image.startsWith('http')) {
+          const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001';
+          const baseUrl = API_BASE.replace('/api/v1', ''); // /api/v1 제거
+          userData.profile_image_url = `${baseUrl}${userData.profile_image}`;
+          console.log('✅ 프로필 이미지 URL:', userData.profile_image_url);
+        } else {
+          userData.profile_image_url = userData.profile_image;
+        }
+
         setCurrentUser(userData);
         setEditedNickname(userData.nickname || userData.name);
 
-        // 프로필 이미지 URL이 있으면 설정
-        if (userData.profile_image_url) {
-          setProfileImagePreview(userData.profile_image_url);
-        }
+        // localStorage에도 저장
+        localStorage.setItem('currentUser', JSON.stringify(userData));
       } catch (error) {
         console.error('사용자 정보 가져오기 실패:', error);
       }
@@ -82,54 +92,17 @@ export default function ProfilePage() {
     fetchSessions();
   }, []);
 
-  const handleImageChange = async (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setProfileImage(file);
 
-      // 이미지 미리보기
+      // 이미지 미리보기만 수행 (저장 버튼 클릭 시 업로드)
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
-
-      // 이미지를 선택하면 즉시 업로드
-      try {
-        const formData = new FormData();
-        formData.append('profile_image', file);
-
-        // 기존 사용자 정보 추가 (필수 필드)
-        if (currentUser.name) {
-          formData.append('name', currentUser.name);
-        }
-        if (currentUser.nickname) {
-          formData.append('nickname', currentUser.nickname);
-        }
-        if (currentUser.phone) {
-          formData.append('phone', currentUser.phone);
-        }
-        if (currentUser.address) {
-          formData.append('address', currentUser.address);
-        }
-
-        const updatedUser = await userService.updateCurrentUser(formData);
-
-        // 상태 업데이트
-        setCurrentUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-        // 사이드바 업데이트를 위한 이벤트 발생
-        window.dispatchEvent(new Event('localStorageChange'));
-
-        alert('프로필 이미지가 업데이트되었습니다.');
-      } catch (error) {
-        console.error('이미지 업로드 실패:', error);
-        alert('이미지 업로드 중 오류가 발생했습니다. 다시 시도해주세요.');
-        // 실패 시 미리보기 초기화
-        setProfileImage(null);
-        setProfileImagePreview(null);
-      }
     }
   };
 
@@ -143,38 +116,70 @@ export default function ProfilePage() {
     try {
       const formData = new FormData();
 
+      console.log('📤 프로필 업데이트 시작');
+
       // 프로필 이미지가 있으면 추가
       if (profileImage) {
         formData.append('profile_image', profileImage);
+        console.log('✅ 프로필 이미지 추가:', profileImage.name);
       }
 
-      // 닉네임 추가
-      if (editedNickname && editedNickname !== currentUser.nickname) {
+      // 닉네임 추가 (항상 포함)
+      if (editedNickname) {
         formData.append('nickname', editedNickname);
+        console.log('✅ 닉네임 추가:', editedNickname);
       }
 
-      // 이름 추가 (필요시)
+      // 이름 추가 (필수)
       if (currentUser.name) {
         formData.append('name', currentUser.name);
       }
 
-      // 전화번호 추가 (필요시)
+      // 전화번호 추가 (있으면)
       if (currentUser.phone) {
         formData.append('phone', currentUser.phone);
       }
 
-      // 주소 추가 (필요시)
+      // 주소 추가 (있으면)
       if (currentUser.address) {
         formData.append('address', currentUser.address);
       }
 
+      // 비밀번호 변경 (있으면)
+      if (newPassword) {
+        formData.append('password', newPassword);
+        console.log('✅ 비밀번호 변경 요청');
+      }
+
+      // FormData 내용 확인
+      console.log('📋 FormData 내용:');
+      for (let pair of formData.entries()) {
+        console.log(pair[0], typeof pair[1] === 'object' ? pair[1] : pair[1]);
+      }
+
       // API 호출
       const updatedUser = await userService.updateCurrentUser(formData);
+      console.log('✅ 프로필 업데이트 성공:', updatedUser);
+
+      // profile_image 경로를 완전한 URL로 변환
+      if (updatedUser.profile_image && !updatedUser.profile_image.startsWith('http')) {
+        const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001';
+        const baseUrl = API_BASE.replace('/api/v1', ''); // /api/v1 제거
+        updatedUser.profile_image_url = `${baseUrl}${updatedUser.profile_image}`;
+        console.log('✅ 업데이트된 프로필 이미지 URL:', updatedUser.profile_image_url);
+      } else {
+        updatedUser.profile_image_url = updatedUser.profile_image;
+      }
 
       // 상태 업데이트
       setCurrentUser(updatedUser);
+      setProfileImagePreview(null); // 미리보기 초기화 (업데이트된 URL 사용)
+      setProfileImage(null); // 이미지 파일 초기화
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       localStorage.setItem('userName', updatedUser.nickname || updatedUser.name);
+
+      // 사이드바 업데이트를 위한 이벤트 발생
+      window.dispatchEvent(new Event('localStorageChange'));
 
       alert('정보가 저장되었습니다.');
 
@@ -182,11 +187,9 @@ export default function ProfilePage() {
       setNewPassword('');
       setConfirmPassword('');
       setIsEditMode(false);
-
-      // 사이드바 업데이트를 위한 이벤트 발생
-      window.dispatchEvent(new Event('localStorageChange'));
     } catch (error) {
-      console.error('프로필 업데이트 실패:', error);
+      console.error('❌ 프로필 업데이트 실패:', error);
+      console.error('에러 상세:', error.response?.data);
       alert('프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   };
@@ -270,19 +273,10 @@ export default function ProfilePage() {
                     <div
                       className="w-[150px] h-[150px] bg-cover bg-center rounded-full"
                       style={{
-                        backgroundImage: `url('${profileImagePreview || currentUser.profile_image_url || imgImage12}')`,
+                        backgroundImage: `url('${currentUser.profile_image_url || imgImage12}')`,
                       }}
                     />
                   </div>
-                  <label className="bg-white flex items-center justify-center px-[20px] py-[3px] rounded-[5px] cursor-pointer hover:opacity-80">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    <span className="font-bold text-[#08213b] text-[15px]">이미지 수정</span>
-                  </label>
                 </div>
 
                 {/* 구분선 */}

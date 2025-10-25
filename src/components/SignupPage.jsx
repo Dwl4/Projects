@@ -127,6 +127,19 @@ export default function SignupPage() {
     }
   };
 
+  const handleAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: function(data) {
+        // 도로명 주소 우선, 없으면 지번 주소 사용
+        const roadAddress = data.roadAddress || data.jibunAddress;
+        setFormData(prev => ({
+          ...prev,
+          address: roadAddress
+        }));
+      }
+    }).open();
+  };
+
   const handleCancel = () => {
     // 로그인 페이지로 돌아가기
     window.history.back();
@@ -243,6 +256,7 @@ export default function SignupPage() {
                 />
                 <button
                   type="button"
+                  onClick={handleAddressSearch}
                   className="absolute right-[8px] top-1/2 transform -translate-y-1/2 bg-[#e0e0e0] text-[#5c5c5c] text-[11px] font-bold px-[12px] py-[4px] rounded"
                 >
                   주소찾기

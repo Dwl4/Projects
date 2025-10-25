@@ -21,6 +21,14 @@ export const getLawyerDetail = async (lawyerId) => {
 };
 
 /**
+ * 현재 로그인한 변호사 정보 조회 (인증 필요, 변호사만 가능)
+ */
+export const getCurrentLawyer = async () => {
+  const response = await api.get('/lawyers/me');
+  return response.data;
+};
+
+/**
  * 내 변호사 프로필 수정 (인증 필요, 변호사만 가능)
  * @param {FormData} formData - name, phone, law_firm, address, introduction, specialties, education, career, consultation_fee, region, profile_image
  */

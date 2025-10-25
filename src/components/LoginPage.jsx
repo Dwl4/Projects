@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { authService } from '../api';
+import { authService, lawyerService } from '../api';
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 const imgLogin = "/assets/Login.png";
@@ -34,12 +34,15 @@ export default function LoginPage() {
 
     try {
       // API 로그인 호출
-      const result = await authService.login(email, password, 'lawyer');
+      await authService.login(email, password, 'lawyer');
+
+      // 변호사 정보 조회 (GET /api/v1/lawyers/me)
+      const lawyerData = await lawyerService.getCurrentLawyer();
 
       // 로그인 성공 시 사용자 정보 저장
-      localStorage.setItem('currentUser', JSON.stringify(result.lawyer || {}));
+      localStorage.setItem('currentUser', JSON.stringify(lawyerData));
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userName', result.lawyer?.name || '변호사');
+      localStorage.setItem('userName', lawyerData.name || '변호사');
       localStorage.setItem('isLawyer', 'true');
 
       alert('변호사 로그인 성공!');

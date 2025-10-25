@@ -12,7 +12,7 @@ import DictionaryDetailContent from './DictionaryDetailContent';  // ✅ 용어�
 import LawyerProfileContent from './LawyerProfileContent';  // ✅ 변호사 프로필 컴포넌트 import
 import LawyerProfileEditContent from './LawyerProfileEditContent';  // ✅ 변호사 프로필 수정 컴포넌트 import
 import { demoCaseData } from '../data/demoData';  // ✅ 사건 데이터 import
-import { authService, aiChatService } from '../api';  // ✅ API 서비스 import
+import { authService, aiChatService, lawyerService } from '../api';  // ✅ API 서비스 import
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
 const imgImage12 = "/assets/Logout_Image.png";
@@ -29,6 +29,13 @@ export default function LawmatePage() {
   // 🔹 홈에서 검색 시 세션 생성 후 이동
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
+
+    // 로그인 여부 확인
+    if (!isLoggedIn) {
+      alert('로그인 후 이용 가능합니다.');
+      navigate('/login');
+      return;
+    }
 
     try {
       console.log('🔵 [홈] 세션 생성 시작', { query: searchQuery });
@@ -84,20 +91,24 @@ export default function LawmatePage() {
 
       if (token) {
         try {
-          const userData = await authService.getCurrentUser();
-
-          // 사용자 정보 업데이트
-          setIsLoggedIn(true);
-
-          // user_type에 따라 적절한 이름 필드 사용
+          // user_type에 따라 적절한 API 호출
           const userType = localStorage.getItem('user_type');
+          let userData;
+
           if (userType === 'lawyer') {
+            // 변호사는 /lawyers/me 호출
+            userData = await lawyerService.getCurrentLawyer();
             setUserName(userData.name || 'Index');
             localStorage.setItem('isLawyer', 'true');
           } else {
+            // 일반 사용자는 /users/me 호출
+            userData = await authService.getCurrentUser();
             setUserName(userData.nickname || userData.name || 'Index');
             localStorage.setItem('isLawyer', 'false');
           }
+
+          // 사용자 정보 업데이트
+          setIsLoggedIn(true);
 
           // localStorage에 사용자 정보 저장
           localStorage.setItem('isLoggedIn', 'true');
@@ -218,21 +229,27 @@ export default function LawmatePage() {
           <button
             className="w-[200px] h-[31px] bg-white rounded-[5px] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.25)] font-bold text-[#08213b] text-[15px]"
             onClick={() => {
-              // authService.logout()으로 모든 토큰 및 사용자 정보 제거
-              authService.logout();
+              // 로그아웃 확인
+              if (window.confirm('로그아웃 하시겠습니까?')) {
+                // authService.logout()으로 모든 토큰 및 사용자 정보 제거
+                authService.logout();
 
-              // 추가 localStorage 값 제거
-              localStorage.removeItem("isLoggedIn");
-              localStorage.removeItem("userName");
-              localStorage.removeItem("currentUser");
-              localStorage.removeItem("isLawyer");
+                // 추가 localStorage 값 제거
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("userName");
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("isLawyer");
 
-              // 상태 업데이트
-              setIsLoggedIn(false);
-              setUserName("Index");
+                // 상태 업데이트
+                setIsLoggedIn(false);
+                setUserName("Index");
 
-              // 커스텀 이벤트 발생시켜서 다른 컴포넌트들에게 로그아웃 알림
-              window.dispatchEvent(new Event('localStorageChange'));
+                // 커스텀 이벤트 발생시켜서 다른 컴포넌트들에게 로그아웃 알림
+                window.dispatchEvent(new Event('localStorageChange'));
+
+                // 홈으로 이동
+                navigate('/');
+              }
             }}
           >
             로그아웃

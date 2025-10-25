@@ -17,6 +17,7 @@ export default function LawyerSignupPage() {
     lawyerRegistrationNumber: '',
     phone: '',
     address: '',
+    detailedAddress: '',
     certificate: null
   });
 
@@ -92,10 +93,12 @@ export default function LawyerSignupPage() {
       formDataToSend.append('phone', formData.phone || '');
       formDataToSend.append('law_firm', formData.lawFirm);
       formDataToSend.append('address', formData.address);
+      formDataToSend.append('detailed_address', formData.detailedAddress || '');
+      formDataToSend.append('lawyer_registration_number', formData.lawyerRegistrationNumber || '');
 
-      // 프로필 이미지가 있으면 추가
+      // 자격증 파일이 있으면 추가
       if (formData.certificate) {
-        formDataToSend.append('profile_image', formData.certificate);
+        formDataToSend.append('certificate', formData.certificate);
       }
 
       const result = await authService.registerLawyer(formDataToSend);
@@ -113,6 +116,19 @@ export default function LawyerSignupPage() {
         alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
       }
     }
+  };
+
+  const handleAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: function(data) {
+        // 도로명 주소 우선, 없으면 지번 주소 사용
+        const roadAddress = data.roadAddress || data.jibunAddress;
+        setFormData(prev => ({
+          ...prev,
+          address: roadAddress
+        }));
+      }
+    }).open();
   };
 
   const handleCancel = () => {
@@ -196,19 +212,6 @@ export default function LawyerSignupPage() {
               />
             </div>
 
-            {/* 닉네임 */}
-            <div className="relative">
-              <label className="block text-[14px] font-bold text-black mb-2">닉네임</label>
-              <input
-                type="text"
-                name="nickname"
-                value={formData.nickname}
-                onChange={handleInputChange}
-                placeholder="로우메이트에서 다른 사람들에게 보일 닉네임을 정해주세요."
-                className="w-full h-[35px] px-[12px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
-              />
-            </div>
-
             {/* 변호사 사무소 */}
             <div className="relative">
               <label className="block text-[14px] font-bold text-black mb-2">변호사 사무소</label>
@@ -218,6 +221,49 @@ export default function LawyerSignupPage() {
                 value={formData.lawFirm}
                 onChange={handleInputChange}
                 placeholder="소속된 변호사 사무소명을 입력해주세요."
+                className="w-full h-[35px] px-[12px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
+              />
+            </div>
+
+            {/* 전화번호 */}
+            <div className="relative">
+              <label className="block text-[14px] font-bold text-black mb-2">전화번호</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="전화번호를 입력해주세요."
+                className="w-full h-[35px] px-[12px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
+              />
+            </div>
+
+            {/* 주소 */}
+            <div className="relative">
+              <label className="block text-[14px] font-bold text-black mb-2">주소</label>
+              <div className="relative mb-[10px]">
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="도로명 주소를 입력해주세요."
+                  className="w-full h-[35px] px-[12px] pr-[65px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  className="absolute right-[8px] top-1/2 transform -translate-y-1/2 bg-[#e0e0e0] text-[#5c5c5c] text-[11px] font-bold px-[12px] py-[4px] rounded"
+                >
+                  주소찾기
+                </button>
+              </div>
+              <input
+                type="text"
+                name="detailedAddress"
+                value={formData.detailedAddress}
+                onChange={handleInputChange}
+                placeholder="상세주소를 입력해주세요."
                 className="w-full h-[35px] px-[12px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
               />
             </div>
@@ -233,27 +279,6 @@ export default function LawyerSignupPage() {
                 placeholder="변호사 등록 번호를 입력해주세요."
                 className="w-full h-[35px] px-[12px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
               />
-            </div>
-
-            {/* 주소 */}
-            <div className="relative">
-              <label className="block text-[14px] font-bold text-black mb-2">주소</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="상세주소를 입력해주세요."
-                  className="w-full h-[35px] px-[12px] pr-[65px] border border-[#929292] rounded-[10px] text-[11px] placeholder-[#acacac]"
-                />
-                <button
-                  type="button"
-                  className="absolute right-[8px] top-1/2 transform -translate-y-1/2 bg-[#e0e0e0] text-[#5c5c5c] text-[11px] font-bold px-[12px] py-[4px] rounded"
-                >
-                  주소찾기
-                </button>
-              </div>
             </div>
 
             {/* 자격증 첨부 */}
