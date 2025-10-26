@@ -431,7 +431,7 @@ export default function LawmatePage() {
             </div>
             <div
               className={`text-center cursor-pointer hover:text-gray-200 ${
-                activeSection === "dictionary" ? "text-gray-800" : "text-white"
+                activeSection === "dictionary" || activeSection === "dictionary-detail" ? "text-gray-800" : "text-white"
               }`}
               onClick={() => navigate("/dictionary")}
             >

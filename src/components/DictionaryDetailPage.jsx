@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { demoDictionaryDetails } from '../data/demoData';
+import { demoDictionaryData } from '../data/demoDictionaryData';
 
 const DictionaryDetailPage = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const DictionaryDetailPage = () => {
   const imgSearch = "/assets/Search.png";
 
   // 용어 데이터 가져오기
-  const termData = demoDictionaryDetails[term] || demoDictionaryDetails['공법'];
+  const termData = demoDictionaryData.find(item => item.term === term) || demoDictionaryData[0];
 
   useEffect(() => {
     const loginStatus = localStorage.getItem('isLoggedIn');
@@ -168,7 +168,7 @@ const DictionaryDetailPage = () => {
             <Link to="/notice" className="text-center cursor-pointer hover:text-gray-200 text-white">
               공지사항
             </Link>
-            <Link to="/dictionary" className="text-center cursor-pointer hover:text-gray-200 text-gray-800 underline">
+            <Link to="/dictionary" className="text-center cursor-pointer hover:text-gray-200 text-white">
               용어사전
             </Link>
             <div className="text-center cursor-pointer hover:text-gray-200">
