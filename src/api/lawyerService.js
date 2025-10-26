@@ -66,3 +66,11 @@ export const removeLawyerFromFavorites = async (lawyerUserId) => {
   const response = await api.delete(`/lawyers/favorites/${lawyerUserId}`);
   return response.data;
 };
+
+/**
+ * 변호사 회원 탈퇴 (인증 필요, 변호사만 가능)
+ */
+export const deleteLawyerAccount = async () => {
+  const response = await api.delete('/lawyers/me');
+  return response.data;
+};

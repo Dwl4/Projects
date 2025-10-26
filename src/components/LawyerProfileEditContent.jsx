@@ -284,13 +284,6 @@ const LawyerProfileEditContent = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm('정말로 계정을 삭제하시겠습니까?')) {
-      alert('계정이 삭제되었습니다.');
-      localStorage.clear();
-      navigate('/');
-    }
-  };
 
   return (
     <>
@@ -302,20 +295,12 @@ const LawyerProfileEditContent = () => {
               <span className="text-[40px] font-bold text-black">{formData.name}</span>
               <span className="text-[40px] font-medium text-black ml-[10px]">변호사님 환영합니다!</span>
             </div>
-            <div className="flex items-center gap-[15px]">
-              <button
-                onClick={() => navigate('/lawyer-profile')}
-                className="text-[13px] font-bold text-[#9ec3e5] hover:underline cursor-pointer"
-              >
-                뒤로가기
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                className="text-[13px] font-bold text-[#ff3333] hover:underline cursor-pointer"
-              >
-                계정 삭제
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/lawyer-profile')}
+              className="text-[13px] font-bold text-[#9ec3e5] hover:underline cursor-pointer"
+            >
+              뒤로가기
+            </button>
           </div>
           <div className="h-[30px] flex items-center mt-[10px]">
             <span className="text-[20px] text-black">사용자님에게</span>

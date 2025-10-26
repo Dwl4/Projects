@@ -8,6 +8,31 @@ const LawyerProfileContent = () => {
   const [lawyerData, setLawyerData] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // 회원 탈퇴 처리
+  const handleDeleteAccount = async () => {
+    try {
+      await lawyerService.deleteLawyerAccount();
+
+      // 모든 로컬 스토리지 정리
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user_type');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('isLawyer');
+
+      alert('회원 탈퇴가 완료되었습니다.');
+
+      // 페이지를 완전히 새로고침하여 사이드바 업데이트
+      window.location.href = '/';
+    } catch (error) {
+      console.error('❌ 회원 탈퇴 실패:', error);
+      alert('회원 탈퇴에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
 
   // 전화번호 포맷팅 함수
   const formatPhoneNumber = (phone) => {
@@ -256,7 +281,57 @@ const LawyerProfileContent = () => {
             </div>
           </div>
         </div>
+
+        {/* 탈퇴하기 버튼 - 자신의 프로필일 때만 표시 */}
+        {isOwnProfile && (
+          <div className="flex justify-end pt-[30px] pb-[20px] px-[91px]">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-[20px] py-[10px] text-[14px] text-red-500 border border-red-500 rounded-[8px] hover:bg-red-50 transition-colors"
+            >
+              탈퇴하기
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* 탈퇴 확인 모달 */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white rounded-[15px] p-[30px] max-w-[500px] w-[90%] shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-[24px] font-bold text-[#333] mb-[20px]">회원 탈퇴</h2>
+            <div className="text-[15px] text-[#666] mb-[30px] leading-relaxed">
+              <p className="mb-[10px]">정말로 탈퇴하시겠습니까?</p>
+              <p className="text-red-500 font-medium">
+                ⚠️ 탈퇴 시 모든 정보가 삭제되며, 복구할 수 없습니다.
+              </p>
+            </div>
+            <div className="flex gap-[10px] justify-end">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-[20px] py-[10px] text-[14px] text-[#666] border border-gray-300 rounded-[8px] hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  handleDeleteAccount();
+                }}
+                className="px-[20px] py-[10px] text-[14px] text-white bg-red-500 rounded-[8px] hover:bg-red-600 transition-colors"
+              >
+                탈퇴하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

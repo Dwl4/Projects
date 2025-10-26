@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { aiChatService } from '../api';
+import { demoDictionaryData } from '../data/demoDictionaryData';
 
 const imgMagnifyingLens = "/assets/Search.png";
 
@@ -17,6 +18,7 @@ function SearchResultsContent() {
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const processedSessionRef = useRef(null);  // 🔹 이미 처리한 세션 추적
+  const [selectedTerm, setSelectedTerm] = useState(null);  // 선택된 용어
 
   // 자동 스크롤
   const scrollToBottom = () => {
@@ -111,6 +113,86 @@ function SearchResultsContent() {
     }
   };
 
+  // 용어 클릭 핸들러
+  const handleTermClick = (termData) => {
+    setSelectedTerm(termData);
+  };
+
+  // 텍스트에서 용어 하이라이트
+  const highlightTerms = (text) => {
+    if (!text || !demoDictionaryData || demoDictionaryData.length === 0) return text;
+
+    // 용어를 길이순으로 정렬 (긴 용어부터 매칭하여 부분 매칭 방지)
+    // 1~2글자 용어는 제외
+    const sortedTerms = [...demoDictionaryData]
+      .filter((termObj) => termObj.term.length > 2)
+      .sort((a, b) => b.term.length - a.term.length);
+
+    const matches = [];
+
+    // 모든 용어 찾기
+    sortedTerms.forEach((termObj) => {
+      // 특수문자 이스케이프 처리
+      const escapedTerm = termObj.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escapedTerm})`, 'g');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          term: match[0],
+          termData: termObj
+        });
+      }
+    });
+
+    // 겹치지 않는 매칭만 선택 (긴 용어 우선)
+    const validMatches = [];
+    matches.sort((a, b) => a.start - b.start);
+
+    matches.forEach((match) => {
+      const overlap = validMatches.some(
+        (vm) => (match.start >= vm.start && match.start < vm.end) ||
+                (match.end > vm.start && match.end <= vm.end)
+      );
+      if (!overlap) {
+        validMatches.push(match);
+      }
+    });
+
+    if (validMatches.length === 0) return text;
+
+    // JSX 요소 배열 생성
+    const parts = [];
+    let lastIndex = 0;
+
+    validMatches.sort((a, b) => a.start - b.start).forEach((match, idx) => {
+      // 매칭 전 텍스트
+      if (match.start > lastIndex) {
+        parts.push(text.substring(lastIndex, match.start));
+      }
+      // 하이라이트된 용어
+      parts.push(
+        <span
+          key={`term-${idx}`}
+          onClick={() => handleTermClick(match.termData)}
+          className="bg-yellow-200 cursor-pointer hover:bg-yellow-300 transition-colors px-[2px] rounded"
+          title="클릭하여 용어 설명 보기"
+        >
+          {match.term}
+        </span>
+      );
+      lastIndex = match.end;
+    });
+
+    // 마지막 남은 텍스트
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts;
+  };
+
   // 4️⃣ 메시지 전송
   const handleSendMessage = async () => {
     // 1. 빈 메시지나 세션 없으면 중단
@@ -171,6 +253,45 @@ function SearchResultsContent() {
 
   return (
     <div className="w-full h-full flex flex-col">
+      {/* 용어 상세 모달 */}
+      {selectedTerm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setSelectedTerm(null)}
+        >
+          <div
+            className="bg-white rounded-[15px] p-[30px] max-w-[600px] max-h-[80vh] overflow-y-auto shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-[20px]">
+              <h2 className="text-[24px] font-bold text-[#333]">{selectedTerm.term}</h2>
+              <button
+                onClick={() => setSelectedTerm(null)}
+                className="text-[24px] text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            {selectedTerm.category && (
+              <div className="mb-[15px]">
+                <span className="inline-block bg-[#5F9AD0] text-white text-[12px] px-[10px] py-[4px] rounded-full">
+                  {selectedTerm.category}
+                </span>
+              </div>
+            )}
+            <div className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
+              {selectedTerm.definition}
+            </div>
+            {selectedTerm.related_laws && (
+              <div className="mt-[20px] pt-[20px] border-t border-gray-200">
+                <h3 className="text-[16px] font-bold mb-[10px]">관련 법령</h3>
+                <p className="text-[14px] text-gray-600">{selectedTerm.related_laws}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 안내 문구 */}
       <div className="flex-shrink-0 px-[60px] pt-[20px] pb-[10px] border-b border-gray-200">
         <p className="text-[14px] text-center text-[#999]">이 서비스는 법률 자문이 아닌 단순 참고용입니다</p>
@@ -235,9 +356,9 @@ function SearchResultsContent() {
                       </span>
                     </div>
                   )}
-                  <p className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
+                  <div className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
+                    {highlightTerms(message.content)}
+                  </div>
 
                   {/* 변호사 관련 버튼 - 마지막 AI 응답에만 표시 */}
                   {isLastAIMessage && (
