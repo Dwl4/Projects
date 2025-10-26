@@ -25,6 +25,7 @@ function App() {
           <Route path="/lawyer-profile" element={<LawmatePage />} />
           <Route path="/lawyer-profile/:id" element={<LawmatePage />} />
           <Route path="/lawyer-profile-edit" element={<LawmatePage />} />
+          <Route path="/nearby-lawyers" element={<LawmatePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/email-login" element={<EmailLoginPage />} />
           <Route path="/lawyer-login" element={<LawyerLoginPage />} />

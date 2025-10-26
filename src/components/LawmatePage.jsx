@@ -12,6 +12,7 @@ import LawyerListContent from './LawyerListContent';  // ✅ 변호사 목록 �
 import DictionaryDetailContent from './DictionaryDetailContent';  // ✅ 용어사전 상세 컴포넌트 import
 import LawyerProfileContent from './LawyerProfileContent';  // ✅ 변호사 프로필 컴포넌트 import
 import LawyerProfileEditContent from './LawyerProfileEditContent';  // ✅ 변호사 프로필 수정 컴포넌트 import
+import NearbyLawyersMap from './NearbyLawyersMap';  // ✅ 내 근처 변호사 지도 컴포넌트 import
 import { demoCaseData } from '../data/demoData';  // ✅ 사건 데이터 import
 import { authService, aiChatService, lawyerService } from '../api';  // ✅ API 서비스 import
 
@@ -80,6 +81,7 @@ export default function LawmatePage() {
     if (path === '/profile') return 'profile';
     if (path === '/search-results') return 'search-results';
     if (path === '/lawyer-list') return 'lawyer-list';
+    if (path === '/nearby-lawyers') return 'nearby-lawyers';
     if (path === '/lawyer-profile-edit') return 'lawyer-profile-edit';
     if (path.startsWith('/lawyer-profile/')) return 'lawyer-profile';
     if (path === '/lawyer-profile') return 'lawyer-profile';
@@ -594,6 +596,10 @@ export default function LawmatePage() {
 
               {activeSection === "lawyer-list" && (
                 <LawyerListContent />  /* ✅ 변호사 목록 컨텐츠로 교체 */
+              )}
+
+              {activeSection === "nearby-lawyers" && (
+                <NearbyLawyersMap />  /* ✅ 내 근처 변호사 지도로 교체 */
               )}
 
               {activeSection === "lawyer-profile" && (

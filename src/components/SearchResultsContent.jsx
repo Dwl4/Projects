@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { aiChatService } from '../api';
 
 const imgMagnifyingLens = "/assets/Search.png";
 
 function SearchResultsContent() {
   const location = useLocation();
+  const navigate = useNavigate();
   const receivedSessionUuid = location.state?.sessionUuid || null;  // 🔹 홈에서 받은 UUID
   const firstQuestion = location.state?.firstQuestion || '';  // 🔹 홈에서 입력한 첫 질문
 
@@ -232,6 +233,22 @@ function SearchResultsContent() {
                 <p className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
                   {message.content}
                 </p>
+
+                {/* 변호사 관련 버튼 */}
+                <div className="mt-[15px] pt-[15px] border-t border-gray-200 flex gap-[10px]">
+                  <button
+                    onClick={() => navigate('/lawyer-list')}
+                    className="flex-1 px-[15px] py-[10px] bg-[#9EC3E5] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#7da9d3] transition-colors"
+                  >
+                    변호사 알아보기
+                  </button>
+                  <button
+                    onClick={() => navigate('/nearby-lawyers')}
+                    className="flex-1 px-[15px] py-[10px] bg-[#5F9AD0] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#4a7db0] transition-colors"
+                  >
+                    내 근처 변호사 찾기
+                  </button>
+                </div>
               </div>
             )}
           </div>
