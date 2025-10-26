@@ -1,101 +1,232 @@
-import React, { useState } from 'react';
-import { demoCommunityPosts } from '../data/demoData';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import * as communityService from '../api/communityService';
+
+// 프로필 이미지 URL 처리 함수
+const getProfileImageUrl = (imagePath) => {
+  if (!imagePath) return '/assets/Login_Image.png';
+
+  // 이미 전체 URL인 경우
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // 상대 경로인 경우 서버 URL 추가
+  const serverUrl = process.env.REACT_APP_API_BASE_URL || 'http://54.180.238.189:8001';
+  const baseUrl = serverUrl.replace('/api/v1', ''); // API 경로 제거
+
+  // 경로가 /로 시작하지 않으면 추가
+  const path = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+
+  return `${baseUrl}${path}`;
+};
 
 const CommunityPostDetail = () => {
+  const { id } = useParams(); // URL에서 게시글 ID 가져오기
+  const navigate = useNavigate();
+
+  const [postData, setPostData] = useState(null);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
-  const [currentPageGroup, setCurrentPageGroup] = useState(0); // 0: 1-9, 1: 11-19, 2: 21-29, etc.
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [showAllComments, setShowAllComments] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [likeCount, setLikeCount] = useState(0);
-  const [hasLiked, setHasLiked] = useState(false);
 
-  // 게시글 데이터
-  const postData = {
-    id: '123450',
-    category: '잡담',
-    title: '[LCK] DRX \'레이지필\' 데뷔! LCK 최초 순수 외국 국적 용병 등장',
-    likes: 242,
-    dislikes: 5,
-    content: `DRX의 베트남 국적 바텀 라이너 '레이지필' 쩐바오민이 5월 1일 LCK 44번째 경기에서 LCK 데뷔전을 치른다.
-2007년생의 어린 나이에도 불구하고 과감하고 저돌적인 플레이 스타일로 주목받아온 '레이지필'은 LCK 역사상 최초의 순수 외국 국적 용병 선수라는 점에서 더욱 큰 의미를 갖는다.
-베트남 출신의 '레이지필'은 2023년 DRX 베트남 트라이아웃을 통해 한국 땅을 밟았다. 연습생 시절부터 뛰어난 피지컬과 과감한 플레이로 팀 관계자들의 눈길을 사로잡았으며, DRX 챌린저스 소속으로 꾸준히 경기를 뛰어왔다.
+  // 댓글 수정 관련 state
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingContent, setEditingContent] = useState('');
 
-'레이지필'은 이미 2025 LCK 컵 무대에서 팀의 주전이었던 '테디' 박진성의 공백을 훌륭하게 메우며 강렬한 인상을 남긴 바 있다. 당시 그는 번뜩이는 플레이와 뛰어난 캐리력으로 팬들에게 '쌀프트', '쌀꺾마'라는 새로운 별명을 얻기도 했다.
+  const [relatedPosts, setRelatedPosts] = useState([]); // 관련 게시글
+  const [currentPage, setCurrentPage] = useState(1); // 현재 페이지
+  const [totalPages, setTotalPages] = useState(1); // 총 페이지 수
+  const postsPerPage = 10; // 페이지당 게시글 수
 
-이번 '레이지필'의 LCK 데뷔는 단순한 신인 선수의 등장을 넘어 LCK 역사에 새로운 이정표를 세우는 사건이다. 한국 e스포츠 리그 역사상 순수 외국 국적의 선수가 1군 무대에 데뷔하는 것은 처음이다. '레이지필'의 LCK 데뷔전은 해외 LoL 유망주들에게 LCK 진출의 꿈을 심어줄 것으로 기대된다.
+  // 게시글 상세 정보 및 댓글 조회
+  useEffect(() => {
+    const fetchPostDetail = async () => {
+      if (!id) return;
 
-최근 DRX는 주전 원거리 딜러 '테디'의 폼 저하로 어려움을 겪고 있다. 이에 팀은 '레이지필'의 과감한 기용을 통해 분위기 반전을 꾀하려는 것으로 보인다. 과연 '레이지필'이 LCK 무대에 성공적으로 안착하며 팀의 새로운 희망으로 떠오를 수 있을지, 그의 활약에 국내외 팬들의 시선이 집중되고 있다.`
+      setLoading(true);
+      setError(null);
 
+      try {
+        console.log('📋 게시글 상세 조회:', id);
+        const response = await communityService.getPostDetail(id);
+        console.log('✅ 게시글 상세 응답:', response);
+
+        setPostData(response);
+        setComments(response.comments || []);
+      } catch (err) {
+        console.error('❌ 게시글 조회 실패:', err);
+        setError('게시글을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPostDetail();
+  }, [id]);
+
+  // 관련 게시글 목록 조회
+  useEffect(() => {
+    const fetchRelatedPosts = async () => {
+      try {
+        const response = await communityService.getPosts({
+          page: currentPage,
+          limit: postsPerPage,
+          category: selectedCategory === '전체' ? undefined : selectedCategory
+        });
+        setRelatedPosts(response.items || []);
+
+        // 총 페이지 수 계산
+        const total = response.total || 0;
+        const calculatedPages = Math.ceil(total / postsPerPage);
+        setTotalPages(calculatedPages || 1);
+      } catch (err) {
+        console.error('❌ 관련 게시글 조회 실패:', err);
+      }
+    };
+
+    fetchRelatedPosts();
+  }, [selectedCategory, currentPage, postsPerPage]);
+
+  // 댓글 작성
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) {
+      alert('댓글 내용을 입력해주세요.');
+      return;
+    }
+
+    // 로그인 체크
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      console.log('📝 댓글 작성:', { postId: id, content: newComment });
+      await communityService.createComment(id, newComment.trim());
+      console.log('✅ 댓글 작성 완료');
+
+      // 댓글 목록 새로고침
+      const response = await communityService.getPostDetail(id);
+      setComments(response.comments || []);
+      setNewComment('');
+      alert('댓글이 작성되었습니다.');
+    } catch (err) {
+      console.error('❌ 댓글 작성 실패:', err);
+      alert('댓글 작성에 실패했습니다.');
+    }
   };
 
-  // 댓글 데이터
-  const comments = [
-    {
-      id: 1,
-      author: '뽀로로',
-      date: '(25.05.01 14:31:59)',
-      content: '최근 DRX는 주전 원거리 딜러 \'테디\'의 폼 저하로 어려움을 겪고 있다. 이에 팀은 \'레이지필\'의 과감한 기용을 통해 분위기 반전을 꾀하려는 것으로 보인다. 과연 \'레이지필\'이 LCK 무대에 성공적으로 안착하며 팀의 새로운 희망으로 떠오를 수 있을지, 그의 활약에 국내외 팬들의 시선이 집중되고 있다.'
-    },
-    {
-      id: 2,
-      author: '벼농사',
-      date: '(25.05.01 15:01:09)',
-      content: '이번 \'레이지필\'의 LCK 데뷔는 단순한 신인 선수의 등장을 넘어 LCK 역사에 새로운 이정표를 세우는 사건이다. 한국 e스포츠 리그 역사상 순수 외국 국적의 선수가 1군 무대에 데뷔하는 것은 처음이다. \'레이지필\'의 LCK 데뷔전은 해외 LoL 유망주들에게 LCK 진출의 꿈을 심어줄 것으로 기대된다.'
-    },
-    {
-      id: 3,
-      author: 'BBSDA',
-      date: '(25.05.01 15:01:09)',
-      content: '최근 DRX는 주전 원거리 딜러 \'테디\'의 폼 저하로 어려움을 겪고 있다. 이에 팀은 \'레이지필\'의 과감한 기용을 통해 분위기 반전을 꾀하려는 것으로 보인다. 과연 \'레이지필\'이 LCK 무대에 성공적으로 안착하며 팀의 새로운 희망으로 떠오를 수 있을지, 그의 활약에 국내외 팬들의 시선이 집중되고 있다.'
-    },
-    {
-      id: 4,
-      author: 'GGDDGG',
-      date: '(25.05.01 15:01:09)',
-      content: '최근 DRX는 주전 원거리 딜러 \'테디\'의 폼 저하로 어려움을 겪고 있다. 이에 팀은 \'레이지필\'의 과감한 기용을 통해 분위기 반전을 꾀하려는 것으로 보인다. 과연 \'레이지필\'이 LCK 무대에 성공적으로 안착하며 팀의 새로운 희망으로 떠오를 수 있을지, 그의 활약에 국내외 팬들의 시선이 집중되고 있다.'
-    },
-    {
-      id: 5,
-      author: '랄로',
-      date: '(25.05.01 15:01:09)',
-      content: '최근 DRX는 주전 원거리 딜러 \'테디\'의 폼 저하로 어려움을 겪고 있다. 이에 팀은 \'레이지필\'의 과감한 기용을 통해 분위기 반전을 꾀하려는 것으로 보인다. 과연 \'레이지필\'이 LCK 무대에 성공적으로 안착하며 팀의 새로운 희망으로 떠오를 수 있을지, 그의 활약에 국내외 팬들의 시선이 집중되고 있다.'
-    },
-    {
-      id: 6,
-      author: '홍길동',
-      date: '(25.05.01 16:30:22)',
-      content: '정말 기대되는 신인 선수네요! 베트남 출신으로 LCK에서 활약하게 되다니, 정말 놀라운 일입니다. 앞으로의 경기가 너무 궁금해요.'
+  // 댓글 삭제
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('정말 이 댓글을 삭제하시겠습니까?')) {
+      return;
     }
-  ];
 
-  const communityPosts = demoCommunityPosts;
+    try {
+      console.log('🗑️ 댓글 삭제:', commentId);
+      await communityService.deleteComment(commentId);
+      console.log('✅ 댓글 삭제 완료');
 
-  const handleCommentSubmit = () => {
-    if (newComment.trim()) {
-      // 댓글 추가 로직
-      console.log('새 댓글:', newComment);
-      setNewComment('');
+      // 댓글 목록 새로고침
+      const response = await communityService.getPostDetail(id);
+      setComments(response.comments || []);
+      alert('댓글이 삭제되었습니다.');
+    } catch (err) {
+      console.error('❌ 댓글 삭제 실패:', err);
+      alert('댓글 삭제에 실패했습니다.');
     }
+  };
+
+  // 댓글 수정 시작
+  const handleStartEdit = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingContent(comment.content);
+  };
+
+  // 댓글 수정 취소
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingContent('');
+  };
+
+  // 댓글 수정 저장
+  const handleSaveEdit = async (commentId) => {
+    if (!editingContent.trim()) {
+      alert('댓글 내용을 입력해주세요.');
+      return;
+    }
+
+    try {
+      console.log('✏️ 댓글 수정:', { commentId, content: editingContent });
+      await communityService.updateComment(commentId, editingContent.trim());
+      console.log('✅ 댓글 수정 완료');
+
+      // 댓글 목록 새로고침
+      const response = await communityService.getPostDetail(id);
+      setComments(response.comments || []);
+      setEditingCommentId(null);
+      setEditingContent('');
+      alert('댓글이 수정되었습니다.');
+    } catch (err) {
+      console.error('❌ 댓글 수정 실패:', err);
+      alert('댓글 수정에 실패했습니다.');
+    }
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePrevious = () => {
-    if (currentPageGroup > 0) {
-      setCurrentPageGroup(currentPageGroup - 1);
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleNext = () => {
-    setCurrentPageGroup(currentPageGroup + 1);
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
-  // 현재 페이지 그룹에 따른 페이지 번호 계산
+  // 페이지 번호 목록 생성 (최대 9개)
   const getPageNumbers = () => {
-    if (currentPageGroup === 0) {
-      return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const pages = [];
+    const maxPagesToShow = 9;
+
+    if (totalPages <= maxPagesToShow) {
+      // 전체 페이지가 9개 이하면 모두 표시
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
     } else {
-      const startPage = currentPageGroup * 10 + 1;
-      return Array.from({ length: 9 }, (_, i) => startPage + i);
+      // 현재 페이지를 중심으로 9개 표시
+      const halfRange = Math.floor(maxPagesToShow / 2);
+      let startPage = Math.max(1, currentPage - halfRange);
+      let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+      // 끝에 가까우면 시작 페이지 조정
+      if (endPage - startPage < maxPagesToShow - 1) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
     }
+
+    return pages;
   };
 
   const handleShowMoreComments = () => {
@@ -104,25 +235,159 @@ const CommunityPostDetail = () => {
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
+    setCurrentPage(1); // 카테고리 변경 시 첫 페이지로
   };
 
   // 선택된 카테고리에 따라 게시글 필터링
   const filteredPosts = selectedCategory === '전체'
-    ? communityPosts
-    : communityPosts.filter(post => post.category === selectedCategory);
-
-  const handleLike = () => {
-    if (!hasLiked) {
-      setLikeCount(likeCount + 1);
-      setHasLiked(true);
-    } else {
-      setLikeCount(likeCount - 1);
-      setHasLiked(false);
-    }
-  };
+    ? relatedPosts
+    : relatedPosts.filter(post => post.category === selectedCategory);
 
   // 표시할 댓글 필터링
   const displayedComments = showAllComments ? comments : comments.slice(0, 5);
+
+  // 댓글 렌더링 함수
+  const renderComment = (comment) => {
+    const formattedDate = comment.created_at
+      ? new Date(comment.created_at).toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).replace(/\. /g, '.').replace(/\.$/, '')
+      : '-';
+
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const currentUserId = localStorage.getItem('user_id');
+    const isMyComment = isLoggedIn && currentUserId && String(comment.user_id) === String(currentUserId);
+
+    // 닉네임 우선 표시, 없으면 이름, 둘 다 없으면 user_id 기반
+    const displayName = comment.user_nickname || comment.user?.nickname || comment.user_name || comment.user?.name || `사용자${comment.user_id}` || '익명';
+
+    // 프로필 이미지 (없으면 기본 이미지)
+    const profileImage = getProfileImageUrl(comment.user_profile_image || comment.user?.profile_image);
+
+    const isEditing = editingCommentId === comment.id;
+
+    return (
+      <div key={comment.id} className="mb-[10px]">
+        <div className="min-h-[110px] bg-white border border-gray-200 rounded-lg shadow-md">
+          {/* 댓글 헤더 */}
+          <div className="px-[30px] h-[50px] flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-[40px] h-[40px] rounded-full overflow-hidden mr-[10px]">
+                <img
+                  src={profileImage}
+                  alt="프로필"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.src = '/assets/Login_Image.png';
+                  }}
+                />
+              </div>
+              <span className="text-[13px] text-black font-bold mr-[10px]">
+                {displayName}
+              </span>
+              <span className="text-[12px] text-black">{formattedDate}</span>
+            </div>
+            {isMyComment && !isEditing && (
+              <div className="flex gap-[5px]">
+                <button
+                  onClick={() => handleStartEdit(comment)}
+                  className="px-[10px] py-[3px] bg-blue-500 text-white text-[11px] rounded-[4px] hover:bg-blue-600 transition-colors"
+                >
+                  수정
+                </button>
+                <button
+                  onClick={() => handleDeleteComment(comment.id)}
+                  className="px-[10px] py-[3px] bg-red-500 text-white text-[11px] rounded-[4px] hover:bg-red-600 transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 댓글 내용 */}
+          <div className="px-[30px] pb-[20px]">
+            <div className="px-[20px]">
+              {isEditing ? (
+                // 수정 모드
+                <div className="space-y-[10px]">
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    className="w-full min-h-[60px] px-[10px] py-[8px] text-[13px] text-black resize-none outline-none rounded-[5px] border-2 border-[#9EC3E5]"
+                  />
+                  <div className="flex gap-[5px]">
+                    <button
+                      onClick={() => handleSaveEdit(comment.id)}
+                      className="px-[15px] py-[5px] bg-[#9ec3e5] text-white text-[12px] rounded-[4px] hover:bg-[#7da9d3] transition-colors"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-[15px] py-[5px] bg-gray-400 text-white text-[12px] rounded-[4px] hover:bg-gray-500 transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // 일반 표시 모드
+                <p className="text-[13px] text-[#565656] leading-[1.5] whitespace-pre-wrap">
+                  {comment.content || ''}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="w-full bg-white min-h-screen flex items-center justify-center">
+        <p className="text-[16px] text-gray-500">로딩 중...</p>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="w-full bg-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[16px] text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/community')}
+            className="px-[20px] py-[10px] bg-[#9ec3e5] text-white rounded-[8px] text-[14px] font-medium hover:bg-[#7da9d3]"
+          >
+            목록으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 데이터 없음
+  if (!postData) {
+    return (
+      <div className="w-full bg-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[16px] text-gray-500 mb-4">게시글을 찾을 수 없습니다.</p>
+          <button
+            onClick={() => navigate('/community')}
+            className="px-[20px] py-[10px] bg-[#9ec3e5] text-white rounded-[8px] text-[14px] font-medium hover:bg-[#7da9d3]"
+          >
+            목록으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white">
@@ -172,30 +437,36 @@ const CommunityPostDetail = () => {
           {/* 게시글 제목 헤더 */}
           <div className="pl-[50px] h-[38px] flex items-center">
             <div className="w-[100px] h-[23px] flex items-center justify-center">
-              <span className="text-[15px] text-black">{postData.category}</span>
+              <span className="text-[15px] text-black">{postData?.category || '-'}</span>
             </div>
             <div className="w-[2px] h-[15px] bg-gray-400 mx-[10px]"></div>
-            <div className="w-[708px] h-[23px] flex items-center px-[5px]">
-              <span className="text-[15px] text-black">{postData.title}</span>
+            <div className="flex-1 h-[23px] flex items-center px-[5px] gap-[10px]">
+              <span className="text-[15px] text-black">{postData?.title || ''}</span>
+              {/* 작성자 정보 */}
+              <div className="flex items-center gap-[5px] ml-auto">
+                <div className="w-[20px] h-[20px] rounded-full overflow-hidden">
+                  <img
+                    src={getProfileImageUrl(postData?.user_profile_image)}
+                    alt="작성자"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = '/assets/Login_Image.png';
+                    }}
+                  />
+                </div>
+                <span className="text-[12px] text-gray-600">
+                  {postData?.user_nickname || postData?.user_name || '익명'}
+                </span>
+              </div>
             </div>
             <div className="w-[100px] h-[23px] flex items-center justify-center">
-              <div className="flex items-center gap-[10px]">
-                <div className="flex items-center gap-[3px]">
-                  <img
-                    src="/assets/eye_icon.png"
-                    alt="조회수"
-                    className="w-[14px] h-[14px] object-contain"
-                  />
-                  <span className="text-[12px] text-black">{postData.likes}</span>
-                </div>
-                <div className="flex items-center gap-[3px]">
-                  <img
-                    src="/assets/love_icon.png"
-                    alt="좋아요"
-                    className="w-[14px] h-[14px] object-contain grayscale opacity-50"
-                  />
-                  <span className="text-[12px] text-gray-400">{likeCount}</span>
-                </div>
+              <div className="flex items-center gap-[3px]">
+                <img
+                  src="/assets/eye_icon.png"
+                  alt="조회수"
+                  className="w-[14px] h-[14px] object-contain"
+                />
+                <span className="text-[12px] text-black">{postData?.views || 0}</span>
               </div>
             </div>
           </div>
@@ -204,39 +475,27 @@ const CommunityPostDetail = () => {
           <div className="px-[50px] h-[340px]">
             <div className="px-[15px] py-[30px] h-full">
               <p className="text-[13px] text-[#565656] leading-[1.6] whitespace-pre-wrap">
-                {postData.content}
+                {postData?.content || ''}
               </p>
             </div>
           </div>
         </div>
 
-        {/* 좋아요 버튼 */}
-        <div className="w-[1020px] mx-auto px-[50px] py-[20px] flex justify-center">
-          <button
-            onClick={handleLike}
-            className="flex items-center gap-[8px] px-[10px] py-[5px] transition-all hover:scale-105 cursor-pointer"
-          >
-            <img
-              src="/assets/love_icon.png"
-              alt="좋아요"
-              className={`w-[35px] h-[35px] object-contain transition-all hover:scale-110 ${
-                hasLiked ? 'opacity-100' : likeCount === 0 ? 'grayscale opacity-50' : 'opacity-70'
-              }`}
-            />
-            <span className={`text-[16px] font-bold ${hasLiked ? 'text-red-600' : likeCount === 0 ? 'text-gray-400' : 'text-gray-700'}`}>
-              {likeCount}
-            </span>
-          </button>
-        </div>
-
         {/* 댓글 섹션 */}
-        <div className="min-h-[680px]">
+        <div className="py-[20px]">
           {/* 댓글 개수 */}
           <div className="px-[50px] h-[35px] flex items-center">
             <div className="w-full h-full flex items-center border-t-2 border-[#9EC3E5]">
               <span className="text-[13px] font-bold text-black">댓글({comments.length}개)</span>
             </div>
           </div>
+
+          {/* 댓글이 없을 때 메시지 */}
+          {comments.length === 0 && (
+            <div className="px-[50px] py-[30px] flex items-center justify-center">
+              <p className="text-[13px] text-gray-400">첫 댓글을 남겨보세요!</p>
+            </div>
+          )}
 
           {/* 댓글 더 보기 */}
           {!showAllComments && comments.length > 5 && (
@@ -251,39 +510,13 @@ const CommunityPostDetail = () => {
           )}
 
           {/* 댓글 목록 */}
-          <div className="px-[50px]">
-            {displayedComments.map((comment, index) => {
-              const heights = [110, 110, 110, 110, 110, 110];
-              const contentHeights = [40, 40, 40, 40, 40, 40];
-              return (
-                <div key={comment.id} className="w-[920px] mb-[10px]">
-                  <div className={`h-[${heights[index]}px] bg-white border border-gray-200 rounded-lg shadow-md`}>
-                    {/* 댓글 헤더 */}
-                    <div className="px-[30px] h-[50px] flex items-center">
-                      <div className="w-[40px] h-[40px] rounded-full overflow-hidden mr-[10px]">
-                        <img
-                          src="/assets/Login_Image.png"
-                          alt="프로필"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-[13px] text-black font-bold mr-[10px]">{comment.author}</span>
-                      <span className="text-[12px] text-black">{comment.date}</span>
-                    </div>
-
-                    {/* 댓글 내용 */}
-                    <div className="px-[30px]">
-                      <div className="px-[20px]">
-                        <p className={`text-[13px] text-[#565656] leading-[1.5] h-[${contentHeights[index]}px]`}>
-                          {comment.content}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {comments.length > 0 && (
+            <div className="px-[50px] py-[10px]">
+              <div className="w-[920px]">
+                {displayedComments.map(comment => renderComment(comment))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 댓글 작성 */}
@@ -319,62 +552,96 @@ const CommunityPostDetail = () => {
             </div>
 
             {/* 테이블 로우 */}
-            {filteredPosts.map((post, index) => (
-              <div key={index} className="w-[920px] bg-white flex h-[30px] hover:bg-gray-50 transition-colors cursor-pointer">
-                <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
-                  {post.id}
+            {filteredPosts.map((post) => {
+              const formattedDate = post.created_at
+                ? new Date(post.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                  }).replace(/\. /g, '.').replace(/\.$/, '')
+                : '-';
+
+              return (
+                <div
+                  key={post.id}
+                  className="w-[920px] bg-white flex h-[30px] hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/community/post/${post.id}`)}
+                >
+                  <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
+                    {post.id}
+                  </div>
+                  <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
+                    {post.category || '-'}
+                  </div>
+                  <div className="w-[560px] h-[30px] flex items-center px-[10px] text-[13px] text-black">
+                    <span className={post.title?.includes('[공지]') ? 'text-red-500' : 'text-black'}>
+                      {post.title}
+                    </span>
+                    {post.comments && post.comments.length > 0 && (
+                      <span className="text-red-500 text-[9px] font-medium ml-[4px]">[{post.comments.length}]</span>
+                    )}
+                  </div>
+                  <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
+                    {formattedDate}
+                  </div>
+                  <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
+                    {post.views || 0}
+                  </div>
                 </div>
-                <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
-                  {post.category}
-                </div>
-                <div className="w-[560px] h-[30px] flex items-center px-[10px] text-[13px] text-black">
-                  <span className={post.isNotice && post.title.includes('[공지]') ? 'text-red-500' : 'text-black'}>
-                    {post.title}
-                  </span>
-                  {post.commentCount && (
-                    <span className="text-red-500 text-[9px] font-medium ml-[4px]">{post.commentCount}</span>
-                  )}
-                </div>
-                <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
-                  {post.date}
-                </div>
-                <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
-                  {post.views}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* 페이지네이션 */}
-        <div className="px-[60px] h-[200px] flex items-center justify-center">
-          <div className="flex items-center gap-[20px] w-[320px]">
-            {currentPageGroup > 0 && (
+        {totalPages > 1 && (
+          <div className="px-[60px] h-[200px] flex items-center justify-center">
+            <div className="flex items-center gap-[20px]">
+              {/* 이전 버튼 */}
               <button
                 onClick={handlePrevious}
-                className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
+                disabled={currentPage === 1}
+                className={`px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium transition-colors ${
+                  currentPage === 1
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#d9d9d9] text-black hover:bg-gray-400'
+                }`}
               >
                 이전
               </button>
-            )}
-            <div className="flex items-center justify-between w-[200px] text-[10px] text-black font-bold">
-              {getPageNumbers().map((page) => (
-                <button
-                  key={page}
-                  className={`${page === 1 ? 'underline' : ''} hover:underline transition-all`}
-                >
-                  {page}
-                </button>
-              ))}
+
+              {/* 페이지 번호 */}
+              <div className="flex items-center gap-[10px] text-[12px] text-black font-bold">
+                {getPageNumbers().map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-[25px] h-[25px] flex items-center justify-center rounded transition-all ${
+                      page === currentPage
+                        ? 'bg-[#9ec3e5] text-white'
+                        : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              {/* 다음 버튼 */}
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className={`px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium transition-colors ${
+                  currentPage === totalPages
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#d9d9d9] text-black hover:bg-gray-400'
+                }`}
+              >
+                다음
+              </button>
             </div>
-            <button
-              onClick={handleNext}
-              className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
-            >
-              다음
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

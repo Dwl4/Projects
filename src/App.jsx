@@ -5,7 +5,6 @@ import LoginPage from './components/LoginPage';
 import EmailLoginPage from './components/EmailLoginPage';
 import SignupPage from './components/SignupPage';
 import LawyerSignupPage from './components/LawyerSignupPage';
-import CommunityPostDetail from './components/CommunityPostDetail';
 import LawyerLoginPage from './components/LawyerLoginPage';
 function App() {
   return (
@@ -15,6 +14,7 @@ function App() {
           <Route path="/" element={<LawmatePage />} />
           <Route path="/case-law" element={<LawmatePage />} />
           <Route path="/community" element={<LawmatePage />} />
+          <Route path="/community/write" element={<LawmatePage />} />
           <Route path="/community-post" element={<LawmatePage />} />
           <Route path="/notice" element={<LawmatePage />} />
           <Route path="/dictionary" element={<LawmatePage />} />
@@ -30,7 +30,7 @@ function App() {
           <Route path="/lawyer-login" element={<LawyerLoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/lawyer-signup" element={<LawyerSignupPage />} />
-          <Route path="/community/post/:id" element={<CommunityPostDetail />} />
+          <Route path="/community/post/:id" element={<LawmatePage />} />
         </Routes>
       </div>
     </Router>

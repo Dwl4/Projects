@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { demoDictionaryData } from '../data/demoDictionaryData';
 
 const DictionaryDetailPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { term } = useParams();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('Index');
-  const [selectedConsonant, setSelectedConsonant] = useState('ㄱ');
+  const [selectedConsonant, setSelectedConsonant] = useState('전체');
 
   // 이미지 경로
   const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
@@ -17,6 +18,22 @@ const DictionaryDetailPage = () => {
 
   // 용어 데이터 가져오기
   const termData = demoDictionaryData.find(item => item.term === term) || demoDictionaryData[0];
+
+  // 이전 페이지에서 전달된 필터 값 또는 sessionStorage에서 불러오기
+  useEffect(() => {
+    const previousConsonant = location.state?.previousConsonant;
+    const savedConsonant = sessionStorage.getItem('dictionaryConsonant');
+
+    if (previousConsonant) {
+      setSelectedConsonant(previousConsonant);
+    } else if (savedConsonant) {
+      // sessionStorage에서 자음 필터 복원
+      setSelectedConsonant(savedConsonant);
+    } else {
+      // 기본값은 '전체'
+      setSelectedConsonant('전체');
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loginStatus = localStorage.getItem('isLoggedIn');
@@ -195,7 +212,24 @@ const DictionaryDetailPage = () => {
                 <div className="py-[10px] h-[65px] flex items-center">
                   <h1
                     className="text-[30px] font-bold text-black cursor-pointer hover:text-gray-700"
-                    onClick={() => navigate('/dictionary')}
+                    onClick={() => {
+                      // location.state에서 이전 필터 값 가져오기
+                      const previousConsonant = location.state?.previousConsonant;
+                      const previousSearchQuery = location.state?.previousSearchQuery;
+
+                      // 이전 필터 값이 있으면 state로 전달
+                      if (previousConsonant || previousSearchQuery) {
+                        navigate('/dictionary', {
+                          state: {
+                            selectedConsonant: previousConsonant,
+                            searchQuery: previousSearchQuery
+                          }
+                        });
+                      } else {
+                        // 이전 필터 값이 없으면 sessionStorage에서 복원되도록 그냥 이동
+                        navigate('/dictionary');
+                      }
+                    }}
                   >
                     ←법률사전
                   </h1>
@@ -203,10 +237,37 @@ const DictionaryDetailPage = () => {
 
                 {/* 초성 필터 */}
                 <div className="h-[50px] flex items-center justify-center gap-[10px] px-[205px]">
+                  {/* 전체 버튼 */}
+                  <button
+                    onClick={() => {
+                      // 필터 선택하고 목록 페이지로 이동
+                      navigate('/dictionary', {
+                        state: {
+                          selectedConsonant: '전체',
+                          searchQuery: location.state?.previousSearchQuery || ''
+                        }
+                      });
+                    }}
+                    className={`w-[50px] h-[30px] flex items-center justify-center font-bold text-[20px] ${
+                      selectedConsonant === '전체'
+                        ? 'bg-[#9ec3e5] text-black shadow-[3px_3px_3px_0px_rgba(0,0,0,0.55)]'
+                        : 'bg-white text-black border border-black'
+                    }`}
+                  >
+                    전체
+                  </button>
                   {consonants.map((consonant) => (
                     <button
                       key={consonant}
-                      onClick={() => setSelectedConsonant(consonant)}
+                      onClick={() => {
+                        // 필터 선택하고 목록 페이지로 이동
+                        navigate('/dictionary', {
+                          state: {
+                            selectedConsonant: consonant,
+                            searchQuery: location.state?.previousSearchQuery || ''
+                          }
+                        });
+                      }}
                       className={`w-[30px] h-[30px] flex items-center justify-center font-bold text-[20px] ${
                         selectedConsonant === consonant
                           ? 'bg-[#9ec3e5] text-black shadow-[3px_3px_3px_0px_rgba(0,0,0,0.55)]'

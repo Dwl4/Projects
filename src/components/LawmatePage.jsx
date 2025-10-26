@@ -4,6 +4,7 @@ import NoticePage from './NoticePage';  // ✅ 공지사항 컴포넌트 import
 import ProfilePage from './ProfilePage';  // ✅ 프로필 컴포넌트 import
 import CommunityPage from './CommunityPage';  // ✅ 커뮤니티 컴포넌트 import
 import CommunityPostDetail from './CommunityPostDetail';  // ✅ 커뮤니티 상세 컴포넌트 import
+import CommunityWritePage from './CommunityWritePage';  // ✅ 커뮤니티 글쓰기 컴포넌트 import
 import CaseLawContent from './CaseLawContent';  // ✅ 판례 컨텐츠 컴포넌트 import
 import { DictionaryContent } from './DictionaryPage';  // ✅ 용어사전 컨텐츠 컴포넌트 import
 import SearchResultsContent from './SearchResultsContent';  // ✅ 검색결과 컨텐츠 컴포넌트 import
@@ -70,6 +71,8 @@ export default function LawmatePage() {
     if (path === '/') return 'home';
     if (path === '/case-law') return 'case-law';
     if (path === '/community') return 'community';
+    if (path === '/community/write') return 'community-write';
+    if (path.startsWith('/community/post/')) return 'community-post-detail';
     if (path === '/community-post') return 'communityPost';
     if (path === '/notice') return 'notice';
     if (path === '/dictionary') return 'dictionary';
@@ -407,7 +410,12 @@ export default function LawmatePage() {
             </div>
             <div
               className={`text-center cursor-pointer hover:text-gray-200 ${
-                activeSection === "community" ? "text-gray-800" : "text-white"
+                activeSection === "community" ||
+                activeSection === "community-write" ||
+                activeSection === "community-post-detail" ||
+                activeSection === "communityPost"
+                  ? "text-gray-800"
+                  : "text-white"
               }`}
               onClick={() => navigate("/community")}
             >
@@ -550,11 +558,22 @@ export default function LawmatePage() {
               )}
 
               {activeSection === "community" && (
-                <CommunityPage onPostClick={() => navigate("/community-post")} />  /* ✅ 커뮤니티 페이지로 교체 */
+                <CommunityPage
+                  onPostClick={() => navigate("/community-post")}
+                  onWriteClick={() => navigate("/community/write")}
+                />  /* ✅ 커뮤니티 페이지로 교체 */
+              )}
+
+              {activeSection === "community-write" && (
+                <CommunityWritePage />  /* ✅ 커뮤니티 글쓰기 페이지 */
+              )}
+
+              {activeSection === "community-post-detail" && (
+                <CommunityPostDetail />  /* ✅ 커뮤니티 게시글 상세 페이지로 교체 */
               )}
 
               {activeSection === "communityPost" && (
-                <CommunityPostDetail />  /* ✅ 커뮤니티 게시글 상세 페이지로 교체 */
+                <CommunityPostDetail />  /* ✅ 커뮤니티 게시글 상세 페이지로 교체 (레거시) */
               )}
 
               {activeSection === "case-law" && (
