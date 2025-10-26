@@ -1,5 +1,5 @@
 import React from 'react';
-import { demoNotices } from '../data/demoData';
+import { demoNotices } from '../data/demoNoticeData';
 
 export default function NoticeDetail({ notice, onBack }) {
   const currentNotice = demoNotices.find(n => n.id === notice.id) || demoNotices[0];
