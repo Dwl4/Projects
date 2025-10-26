@@ -195,64 +195,72 @@ function SearchResultsContent() {
           </div>
         )}
 
-        {messages.map((message, index) => (
-          <div
-            key={message.id || index}
-            className={`flex ${
-              message.role === 'user'
-                ? 'justify-end'
-                : message.role === 'error'
-                ? 'justify-center'
-                : 'justify-start'
-            }`}
-          >
-            {message.role === 'user' ? (
-              // 사용자 메시지
-              <div className="bg-[#ACCEE9] rounded-[15px] px-[20px] py-[15px] max-w-[600px]">
-                <p className="text-[15px] text-[#082135] leading-relaxed whitespace-pre-wrap">
-                  {message.content}
-                </p>
-              </div>
-            ) : message.role === 'error' ? (
-              // 에러 메시지
-              <div className="bg-red-100 border-2 border-red-300 rounded-[15px] px-[25px] py-[15px] max-w-[500px]">
-                <p className="text-[14px] text-red-700">
-                  {message.content}
-                </p>
-              </div>
-            ) : (
-              // AI 응답
-              <div className="bg-white border-2 border-[#9EC3E5] rounded-[15px] px-[25px] py-[20px] max-w-[700px] shadow-sm">
-                {message.legal_category && (
-                  <div className="mb-[10px]">
-                    <span className="inline-block bg-[#5F9AD0] text-white text-[12px] px-[10px] py-[4px] rounded-full">
-                      {message.legal_category}
-                    </span>
-                  </div>
-                )}
-                <p className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
-                  {message.content}
-                </p>
+        {messages.map((message, index) => {
+          // 마지막 AI 응답인지 확인
+          const isLastAIMessage = message.role === 'assistant' &&
+            index === messages.length - 1;
 
-                {/* 변호사 관련 버튼 */}
-                <div className="mt-[15px] pt-[15px] border-t border-gray-200 flex gap-[10px]">
-                  <button
-                    onClick={() => navigate('/lawyer-list')}
-                    className="flex-1 px-[15px] py-[10px] bg-[#9EC3E5] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#7da9d3] transition-colors"
-                  >
-                    변호사 알아보기
-                  </button>
-                  <button
-                    onClick={() => navigate('/nearby-lawyers')}
-                    className="flex-1 px-[15px] py-[10px] bg-[#5F9AD0] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#4a7db0] transition-colors"
-                  >
-                    내 근처 변호사 찾기
-                  </button>
+          return (
+            <div
+              key={message.id || index}
+              className={`flex ${
+                message.role === 'user'
+                  ? 'justify-end'
+                  : message.role === 'error'
+                  ? 'justify-center'
+                  : 'justify-start'
+              }`}
+            >
+              {message.role === 'user' ? (
+                // 사용자 메시지
+                <div className="bg-[#ACCEE9] rounded-[15px] px-[20px] py-[15px] max-w-[600px]">
+                  <p className="text-[15px] text-[#082135] leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              ) : message.role === 'error' ? (
+                // 에러 메시지
+                <div className="bg-red-100 border-2 border-red-300 rounded-[15px] px-[25px] py-[15px] max-w-[500px]">
+                  <p className="text-[14px] text-red-700">
+                    {message.content}
+                  </p>
+                </div>
+              ) : (
+                // AI 응답
+                <div className="bg-white border-2 border-[#9EC3E5] rounded-[15px] px-[25px] py-[20px] max-w-[700px] shadow-sm">
+                  {message.legal_category && (
+                    <div className="mb-[10px]">
+                      <span className="inline-block bg-[#5F9AD0] text-white text-[12px] px-[10px] py-[4px] rounded-full">
+                        {message.legal_category}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-[15px] text-[#333] leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+
+                  {/* 변호사 관련 버튼 - 마지막 AI 응답에만 표시 */}
+                  {isLastAIMessage && (
+                    <div className="mt-[15px] pt-[15px] border-t border-gray-200 flex gap-[10px]">
+                      <button
+                        onClick={() => navigate('/lawyer-list')}
+                        className="flex-1 px-[15px] py-[10px] bg-[#9EC3E5] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#7da9d3] transition-colors"
+                      >
+                        변호사 알아보기
+                      </button>
+                      <button
+                        onClick={() => navigate('/nearby-lawyers')}
+                        className="flex-1 px-[15px] py-[10px] bg-[#5F9AD0] text-white text-[13px] font-medium rounded-[8px] hover:bg-[#4a7db0] transition-colors"
+                      >
+                        내 근처 변호사 찾기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {loading && (
           <div className="flex justify-start">

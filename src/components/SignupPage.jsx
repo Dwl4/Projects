@@ -130,11 +130,11 @@ export default function SignupPage() {
   const handleAddressSearch = () => {
     new window.daum.Postcode({
       oncomplete: function(data) {
-        // 도로명 주소 우선, 없으면 지번 주소 사용
-        const roadAddress = data.roadAddress || data.jibunAddress;
+        // 지번 주소 우선, 없으면 도로명 주소 사용
+        const jibunAddress = data.jibunAddress || data.roadAddress;
         setFormData(prev => ({
           ...prev,
-          address: roadAddress
+          address: jibunAddress
         }));
       }
     }).open();

@@ -9,6 +9,28 @@ const LawyerProfileContent = () => {
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
 
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return '-';
+    const cleaned = phone.replace(/\D/g, ''); // 숫자만 추출
+
+    if (cleaned.length === 11) {
+      // 010-1234-5678
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
+    } else if (cleaned.length === 10) {
+      // 02-1234-5678 또는 031-123-4567
+      if (cleaned.startsWith('02')) {
+        return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+      } else {
+        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      }
+    } else if (cleaned.length === 9) {
+      // 02-123-4567
+      return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}-${cleaned.slice(5)}`;
+    }
+    return phone; // 형식에 맞지 않으면 원본 반환
+  };
+
   useEffect(() => {
     const fetchLawyerProfile = async () => {
       try {
@@ -141,7 +163,7 @@ const LawyerProfileContent = () => {
                 </div>
                 <div className="flex flex-col gap-[21px] text-[#6b6b6b] font-bold">
                   <div>{lawyerData?.name || '-'}</div>
-                  <div>{lawyerData?.phone || '-'}</div>
+                  <div>{formatPhoneNumber(lawyerData?.phone)}</div>
                 </div>
               </div>
 

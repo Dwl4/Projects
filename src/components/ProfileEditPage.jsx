@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { lawyerData, userProfile, recentCases, imageAssets } from '../demoData';
 
 export default function ProfileEditPage() {
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState(userProfile.nickname);
   const [address, setAddress] = useState(userProfile.address);
   const [favorites, setFavorites] = useState(new Set());
@@ -21,12 +19,6 @@ export default function ProfileEditPage() {
   };
 
   const handleSave = () => {
-    // 비밀번호 확인
-    if (newPassword && newPassword !== confirmPassword) {
-      alert('비밀번호가 일치하지 않습니다.');
-      return;
-    }
-
     // localStorage에서 현재 사용자 정보 가져오기
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
@@ -36,11 +28,6 @@ export default function ProfileEditPage() {
       nickname: nickname,
       address: address
     };
-
-    // 비밀번호가 입력되었으면 업데이트
-    if (newPassword) {
-      updatedUser.password = newPassword;
-    }
 
     // localStorage에 저장
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
@@ -58,14 +45,16 @@ export default function ProfileEditPage() {
 
     // 페이지 새로고침하여 사이드바 업데이트 반영
     window.location.reload();
-
-    // 비밀번호 입력 필드 초기화
-    setNewPassword('');
-    setConfirmPassword('');
   };
 
-  const openMapSearch = () => {
-    window.open('https://map.kakao.com/', '_blank');
+  const handleAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: function(data) {
+        // 도로명 주소 우선, 없으면 지번 주소 사용
+        const roadAddress = data.roadAddress || data.jibunAddress;
+        setAddress(roadAddress);
+      }
+    }).open();
   };
 
   const handleWithdraw = () => {
@@ -195,16 +184,12 @@ export default function ProfileEditPage() {
 
               {/* 개인정보box */}
               <div className="basis-0 box-border content-stretch flex gap-[30px] grow h-full items-center min-h-px min-w-px overflow-clip pl-[30px] pr-[50px] py-[10px] relative shrink-0">
-                {/* 이름,메일,비번box */}
+                {/* 이름,메일box */}
                 <div className="box-border content-stretch flex flex-col gap-[10px] h-full items-start overflow-clip px-0 py-[30px] relative shrink-0">
                   <div className="font-['Inter:Regular',_'Noto_Sans_KR:Regular',_sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[13px] text-black text-nowrap tracking-[-0.13px] whitespace-pre">
                     <p className="mb-0">이름: </p>
                     <p className="mb-0">&nbsp;</p>
-                    <p className="mb-0">이메일:</p>
-                    <p className="mb-0">&nbsp;</p>
-                    <p className="mb-0">비밀번호 변경:</p>
-                    <p className="mb-0">&nbsp;</p>
-                    <p>비밀번호 확인:</p>
+                    <p>이메일:</p>
                   </div>
                 </div>
 
@@ -215,20 +200,6 @@ export default function ProfileEditPage() {
                     <p className="mb-0">&nbsp;</p>
                     <p>{userProfile.email}</p>
                   </div>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="새 비밀번호"
-                    className="bg-white h-[20px] shrink-0 w-[130px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
-                  />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="비밀번호 확인"
-                    className="bg-white h-[20px] shrink-0 w-[130px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
-                  />
                 </div>
 
                 {/* 닉,주소box */}
@@ -246,10 +217,20 @@ export default function ProfileEditPage() {
                     type="text"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
-                    className="bg-white h-[20px] shrink-0 w-[130px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
+                    className="bg-white h-[20px] shrink-0 w-[200px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
                   />
-                  <div className="bg-white box-border content-stretch flex gap-[10px] items-center justify-center overflow-clip px-[13px] py-0 relative shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)] shrink-0 cursor-pointer hover:opacity-80" onClick={openMapSearch}>
-                    <p className="font-['Inter:Regular',_'Noto_Sans_KR:Regular',_sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[13px] text-black text-nowrap tracking-[-0.13px] whitespace-pre">길찾기</p>
+                  <div className="flex flex-col gap-[10px]">
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="주소"
+                      className="bg-white h-[20px] shrink-0 w-[200px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
+                      readOnly
+                    />
+                    <div className="bg-white box-border content-stretch flex gap-[10px] items-center justify-center overflow-clip px-[13px] py-0 relative shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)] shrink-0 cursor-pointer hover:opacity-80" onClick={handleAddressSearch}>
+                      <p className="font-['Inter:Regular',_'Noto_Sans_KR:Regular',_sans-serif] font-normal leading-[1.5] not-italic relative shrink-0 text-[13px] text-black text-nowrap tracking-[-0.13px] whitespace-pre">주소 검색</p>
+                    </div>
                   </div>
                   <div className="basis-0 bg-[rgba(255,255,255,0)] content-stretch flex grow items-end justify-end min-h-px min-w-px overflow-clip relative shrink-0 w-full">
                     <div className="bg-white box-border content-stretch flex items-center justify-end px-[13px] py-0 relative shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)] shrink-0 cursor-pointer hover:opacity-80" onClick={handleWithdraw}>

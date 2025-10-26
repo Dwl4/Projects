@@ -39,10 +39,7 @@ export default function ProfilePage() {
 
   const [favorites, setFavorites] = useState(getFavoritesFromStorage());
   const [favoriteOrder, setFavoriteOrder] = useState([]);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [editedAddress, setEditedAddress] = useState(currentUser.address || '');
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -167,12 +164,6 @@ export default function ProfilePage() {
   };
 
   const handleSaveProfile = async () => {
-    // 비밀번호 확인
-    if (newPassword && newPassword !== confirmPassword) {
-      alert('비밀번호가 일치하지 않습니다.');
-      return;
-    }
-
     try {
       const formData = new FormData();
 
@@ -200,15 +191,10 @@ export default function ProfilePage() {
         formData.append('phone', currentUser.phone);
       }
 
-      // 주소 추가 (있으면)
-      if (currentUser.address) {
-        formData.append('address', currentUser.address);
-      }
-
-      // 비밀번호 변경 (있으면)
-      if (newPassword) {
-        formData.append('password', newPassword);
-        console.log('✅ 비밀번호 변경 요청');
+      // 주소 추가 (수정된 주소 사용)
+      if (editedAddress) {
+        formData.append('address', editedAddress);
+        console.log('✅ 주소 추가:', editedAddress);
       }
 
       // FormData 내용 확인
@@ -242,10 +228,6 @@ export default function ProfilePage() {
       window.dispatchEvent(new Event('localStorageChange'));
 
       alert('정보가 저장되었습니다.');
-
-      // 비밀번호 입력 필드 초기화
-      setNewPassword('');
-      setConfirmPassword('');
       setIsEditMode(false);
     } catch (error) {
       console.error('❌ 프로필 업데이트 실패:', error);
@@ -258,8 +240,14 @@ export default function ProfilePage() {
     console.log('문의 등록 클릭');
   };
 
-  const openMapSearch = () => {
-    window.open('https://map.kakao.com/', '_blank');
+  const handleAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: function(data) {
+        // 지번 주소 우선, 없으면 도로명 주소 사용
+        const jibunAddress = data.jibunAddress || data.roadAddress;
+        setEditedAddress(jibunAddress);
+      }
+    }).open();
   };
 
   const handleWithdraw = () => {
@@ -656,9 +644,7 @@ export default function ProfilePage() {
                   <div className="flex flex-col gap-[10px] h-full items-start py-[30px]">
                     <div className="font-normal text-[13px] text-black whitespace-pre-line">
                       이름: <br /><br />
-                      이메일:<br /><br />
-                      비밀번호 변경:<br /><br />
-                      비밀번호 확인:
+                      이메일:
                     </div>
                   </div>
 
@@ -667,58 +653,6 @@ export default function ProfilePage() {
                     <div className="font-normal text-[13px] text-black whitespace-pre-line">
                       {currentUser.name}<br /><br />
                       {currentUser.email}
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="새 비밀번호"
-                        className="bg-white h-[20px] w-[130px] border border-gray-300 rounded px-[5px] pr-[25px] text-[10px] focus:outline-none focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="block absolute right-[5px] transform -translate-y-[110%] h-[16px] w-[16px] flex items-center justify-center text-gray-500 hover:text-gray-700"
-                      >
-                        {showNewPassword ? (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                          </svg>
-                        ) : (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                            <line x1="1" y1="1" x2="23" y2="23"/>
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="비밀번호 확인"
-                        className="bg-white h-[20px] w-[130px] border border-gray-300 rounded px-[5px] pr-[25px] text-[10px] focus:outline-none focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-[5px] transform -translate-y-[110%] h-[16px] w-[16px] flex items-center justify-center text-gray-500 hover:text-gray-700"
-                      >
-                        {showConfirmPassword ? (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                          </svg>
-                        ) : (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                            <line x1="1" y1="1" x2="23" y2="23"/>
-                          </svg>
-                        )}
-                      </button>
                     </div>
                   </div>
 
@@ -736,14 +670,22 @@ export default function ProfilePage() {
                       type="text"
                       value={editedNickname}
                       onChange={(e) => setEditedNickname(e.target.value)}
-                      className="bg-white h-[20px] w-[130px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
+                      className="bg-white h-[20px] w-[200px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
                     />
-                    <div className="mb-[10px]">
+                    <div className="flex flex-col gap-[10px] mb-[10px]">
+                      <input
+                        type="text"
+                        value={editedAddress}
+                        onChange={(e) => setEditedAddress(e.target.value)}
+                        placeholder="주소"
+                        className="bg-white h-[20px] w-[200px] border border-gray-300 rounded px-[5px] text-[10px] focus:outline-none focus:border-blue-500"
+                        readOnly
+                      />
                       <div
                         className="bg-white px-[13px] py-[2px] shadow-[2px_2px_1px_0px_rgba(0,0,0,0.25)] inline-block cursor-pointer hover:opacity-80"
-                        onClick={openMapSearch}
+                        onClick={handleAddressSearch}
                       >
-                        <span className="font-normal text-[13px] text-black">길찾기</span>
+                        <span className="font-normal text-[13px] text-black">주소 검색</span>
                       </div>
                     </div>
                     <div className="absolute bottom-[30px] right-0 flex gap-[10px]">
