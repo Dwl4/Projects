@@ -6,6 +6,7 @@ import CommunityPage from './CommunityPage';  // ✅ 커뮤니티 컴포넌트 i
 import CommunityPostDetail from './CommunityPostDetail';  // ✅ 커뮤니티 상세 컴포넌트 import
 import CommunityWritePage from './CommunityWritePage';  // ✅ 커뮤니티 글쓰기 컴포넌트 import
 import CaseLawContent from './CaseLawContent';  // ✅ 판례 컨텐츠 컴포넌트 import
+import CaseLawDetail from './CaseLawDetail';  // ✅ 판례 상세 컴포넌트 import
 import { DictionaryContent } from './DictionaryPage';  // ✅ 용어사전 컨텐츠 컴포넌트 import
 import SearchResultsContent from './SearchResultsContent';  // ✅ 검색결과 컨텐츠 컴포넌트 import
 import LawyerListContent from './LawyerListContent';  // ✅ 변호사 목록 컴포넌트 import
@@ -71,6 +72,7 @@ export default function LawmatePage() {
     const path = location.pathname;
     if (path === '/') return 'home';
     if (path === '/case-law') return 'case-law';
+    if (path === '/case-law-detail') return 'case-law-detail';
     if (path === '/community') return 'community';
     if (path === '/community/write') return 'community-write';
     if (path.startsWith('/community/post/')) return 'community-post-detail';
@@ -491,7 +493,7 @@ export default function LawmatePage() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={async (e) => {
+                        onKeyDown={async (e) => {
                           if (e.key === 'Enter' && searchQuery.trim()) {
                             await handleSearch();
                           }
@@ -580,6 +582,10 @@ export default function LawmatePage() {
 
               {activeSection === "case-law" && (
                 <CaseLawContent />  /* ✅ 판례 컨텐츠로 교체 */
+              )}
+
+              {activeSection === "case-law-detail" && (
+                <CaseLawDetail />  /* ✅ 판례 상세로 교체 */
               )}
 
               {activeSection === "dictionary" && (

@@ -1,26 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CaseLawSearchResults from './CaseLawSearchResults';
-import CaseLawDetail from './CaseLawDetail';
-import { caseLawService } from '../api';
+import { searchCaseLawsFromGov } from '../api/caseLawService';
 
 const imgSearch = "/assets/Search.png";
 
 export default function CaseLawContent() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [caseNumber, setCaseNumber] = useState('');
   const [caseName, setCaseName] = useState('');
   const [reference, setReference] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [showCaseDetail, setShowCaseDetail] = useState(false);
-  const [selectedCaseLawId, setSelectedCaseLawId] = useState(null);
-  const [currentPageGroup, setCurrentPageGroup] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [caseLawList, setCaseLawList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // 초기 판례 목록 로드
+  // 초기 판례 목록 로드 (최신 판례)
   useEffect(() => {
     loadCaseLaws();
   }, [currentPage]);
@@ -29,16 +27,46 @@ export default function CaseLawContent() {
     try {
       setLoading(true);
       setError(null);
-      const response = await caseLawService.searchCaseLaws({
+
+      // 최신 판례 10개 로드 (키워드 없이)
+      const response = await searchCaseLawsFromGov({
         page: currentPage,
-        limit: 10
+        display: 10
       });
-      setCaseLawList(response.data || []);
-      setTotalPages(response.totalPages || 0);
+
+      if (response && response.PrecSearch && response.PrecSearch.prec) {
+        const precData = response.PrecSearch.prec;
+        const results = Array.isArray(precData) ? precData : [precData];
+
+        console.log('📋 검색 API 응답 전체 필드:', results[0]);
+
+        const formattedList = results.map((item) => ({
+          case_law_id: item.판례일련번호,
+          caseLawId: item.판례일련번호,
+          case_number: item.사건번호,
+          case_name: item.사건명,
+          court_name: item.법원명,
+          judgment_date: item.선고일자,
+          summary: item.사건명,
+          title: item.사건명,
+          subtitle: `${item.법원명 || ''} ${item.선고일자 || ''} ${item.사건번호 || ''}`.trim(),
+          content: item.사건명 || '내용 없음'
+        }));
+
+        setCaseLawList(formattedList);
+
+        // totalPages 계산
+        const total = parseInt(response.PrecSearch.totalCnt) || formattedList.length;
+        setTotalPages(Math.ceil(total / 10));
+      } else {
+        setCaseLawList([]);
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error('판례 목록 로드 실패:', err);
       setError('판례 목록을 불러오는데 실패했습니다.');
       setCaseLawList([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -51,22 +79,44 @@ export default function CaseLawContent() {
 
       const params = {
         keyword: searchQuery,
-        case_number: caseNumber,
-        case_name: caseName,
+        caseNumber: caseNumber,
+        caseName: caseName,
         reference: reference,
         page: 1,
-        limit: 10
+        display: 10
       };
 
-      const response = await caseLawService.searchCaseLaws(params);
-      setCaseLawList(response.data || []);
-      setTotalPages(response.totalPages || 0);
-      setCurrentPage(1);
-      setCurrentPageGroup(0);
+      const response = await searchCaseLawsFromGov(params);
 
-      // 검색 결과가 있으면 검색 결과 페이지 표시
-      if (response.data && response.data.length > 0) {
-        setShowSearchResults(true);
+      if (response && response.PrecSearch && response.PrecSearch.prec) {
+        const precData = response.PrecSearch.prec;
+        const results = Array.isArray(precData) ? precData : [precData];
+
+        const formattedList = results.map((item) => ({
+          case_law_id: item.판례일련번호,
+          caseLawId: item.판례일련번호,
+          case_number: item.사건번호,
+          case_name: item.사건명,
+          court_name: item.법원명,
+          judgment_date: item.선고일자,
+          summary: item.사건명,
+          title: item.사건명,
+          subtitle: `${item.법원명 || ''} ${item.선고일자 || ''} ${item.사건번호 || ''}`.trim(),
+          content: item.사건명 || '내용 없음'
+        }));
+
+        console.log('🔎 CaseLawContent 검색 결과:', formattedList);
+        setCaseLawList(formattedList);
+        setCurrentPage(1);
+
+        // 검색 결과가 있으면 검색 결과 페이지 표시
+        if (formattedList.length > 0) {
+          console.log('✅ 검색 결과 페이지로 전환, 결과 개수:', formattedList.length);
+          setShowSearchResults(true);
+        }
+      } else {
+        setCaseLawList([]);
+        setError('검색 결과가 없습니다.');
       }
     } catch (err) {
       console.error('판례 검색 실패:', err);
@@ -77,33 +127,41 @@ export default function CaseLawContent() {
     }
   };
 
-  const handleCaseLawClick = (caseLawId) => {
-    setSelectedCaseLawId(caseLawId);
-    setShowCaseDetail(true);
+  const handleCaseLawClick = (caseLawData) => {
+    navigate('/case-law-detail', { state: { caseLawData } });
   };
 
+  // 페이지 그룹 계산 (한 번에 10개 페이지씩 표시)
   const getPageNumbers = () => {
-    const start = currentPageGroup * 9 + 1;
-    return Array.from({ length: 9 }, (_, i) => start + i);
+    const pageGroupSize = 10;
+    const currentGroup = Math.floor((currentPage - 1) / pageGroupSize);
+    const startPage = currentGroup * pageGroupSize + 1;
+    const endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
+
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
   };
 
   const handlePrevious = () => {
-    if (currentPageGroup > 0) {
-      setCurrentPageGroup(currentPageGroup - 1);
-    }
+    const pageGroupSize = 10;
+    const currentGroup = Math.floor((currentPage - 1) / pageGroupSize);
+    const newPage = Math.max(1, currentGroup * pageGroupSize);
+    setCurrentPage(newPage);
   };
 
   const handleNext = () => {
-    setCurrentPageGroup(currentPageGroup + 1);
+    const pageGroupSize = 10;
+    const currentGroup = Math.floor((currentPage - 1) / pageGroupSize);
+    const newPage = Math.min(totalPages, (currentGroup + 1) * pageGroupSize + 1);
+    setCurrentPage(newPage);
   };
 
   const handlePageClick = (page) => {
     setCurrentPage(page);
   };
-
-  if (showCaseDetail && selectedCaseLawId) {
-    return <CaseLawDetail caseLawId={selectedCaseLawId} />;
-  }
 
   if (showSearchResults) {
     return <CaseLawSearchResults searchResults={caseLawList} />;
@@ -173,7 +231,7 @@ export default function CaseLawContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="검색어를 입력 하세요!"
               className="w-[410px] text-[15px] text-black bg-transparent outline-none"
             />
@@ -196,10 +254,6 @@ export default function CaseLawContent() {
 
         {/* 판례 목록 */}
         <div className="p-[10px]">
-          <div className="flex justify-end mb-[5px]">
-            <p className="text-[10px] font-bold text-black">조회순↓</p>
-          </div>
-
           {/* 테이블 헤더 */}
           <div className="bg-white border-t border-[#787878] flex">
             <div className="w-[50px] h-[40px] flex items-center justify-center">
@@ -224,7 +278,7 @@ export default function CaseLawContent() {
               <div
                 key={item.case_law_id || index}
                 className="bg-white border-t border-[#787878] flex cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => handleCaseLawClick(item.case_law_id)}
+                onClick={() => handleCaseLawClick(item)}
               >
                 <div className="w-[50px] h-[80px] flex items-center justify-center">
                   <p className="text-[15px] text-black">
@@ -249,33 +303,48 @@ export default function CaseLawContent() {
         </div>
 
         {/* 페이지네이션 */}
-        <div className="px-[60px] h-[200px] flex items-center justify-center">
-          <div className="flex items-center gap-[20px] w-[320px]">
-            {currentPageGroup > 0 && (
-              <button
-                onClick={handlePrevious}
-                className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
-              >
-                이전
-              </button>
-            )}
-            <div className="flex items-center justify-between w-[200px] text-[10px] text-black font-bold">
+        <div className="h-[200px] flex items-center justify-center">
+          <div className="flex items-center gap-[20px]">
+            {/* 이전 버튼 영역 (고정 너비) */}
+            <div className="w-[50px] flex items-center justify-center">
+              {getPageNumbers()[0] > 1 && (
+                <button
+                  onClick={handlePrevious}
+                  className="bg-[#d9d9d9] px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors w-[50px]"
+                >
+                  이전
+                </button>
+              )}
+            </div>
+
+            {/* 페이지 번호들 (10개씩) - 고정 크기 버튼 */}
+            <div className="flex items-center gap-[10px] text-[12px] text-black font-bold">
               {getPageNumbers().map((page) => (
                 <button
                   key={page}
                   onClick={() => handlePageClick(page)}
-                  className={`${page === currentPage ? 'underline' : ''} hover:underline transition-all`}
+                  className={`w-[30px] h-[30px] flex items-center justify-center rounded ${
+                    page === currentPage
+                      ? 'bg-[#9ec3e5] text-black'
+                      : 'hover:bg-gray-200'
+                  } transition-all`}
                 >
                   {page}
                 </button>
               ))}
             </div>
-            <button
-              onClick={handleNext}
-              className="bg-[#d9d9d9] px-[5px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors"
-            >
-              다음
-            </button>
+
+            {/* 다음 버튼 영역 (고정 너비) */}
+            <div className="w-[50px] flex items-center justify-center">
+              {getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
+                <button
+                  onClick={handleNext}
+                  className="bg-[#d9d9d9] px-[10px] py-[5px] rounded-[5px] text-[12px] font-medium text-black hover:bg-gray-400 transition-colors w-[50px]"
+                >
+                  다음
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

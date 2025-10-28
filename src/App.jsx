@@ -13,6 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LawmatePage />} />
           <Route path="/case-law" element={<LawmatePage />} />
+          <Route path="/case-law-detail" element={<LawmatePage />} />
           <Route path="/community" element={<LawmatePage />} />
           <Route path="/community/write" element={<LawmatePage />} />
           <Route path="/community-post" element={<LawmatePage />} />
