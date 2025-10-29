@@ -452,7 +452,7 @@ const CommunityPostDetail = () => {
               <span className="text-[15px] text-black">{postData?.category || '-'}</span>
             </div>
             <div className="w-[2px] h-[15px] bg-gray-400"></div>
-            <div className="flex-1 h-[23px] flex items-center">
+            <div className="flex-1 max-w-[730px] h-[23px] flex items-center">
               <span className="text-[15px] text-black">{postData?.title || ''}</span>
             </div>
             {/* 작성자 정보 */}
@@ -567,7 +567,7 @@ const CommunityPostDetail = () => {
             </div>
 
             {/* 테이블 로우 */}
-            {filteredPosts.map((post) => {
+            {filteredPosts.map((post, index) => {
               const formattedDate = post.created_at
                 ? new Date(post.created_at).toLocaleDateString('ko-KR', {
                     year: 'numeric',
@@ -576,6 +576,9 @@ const CommunityPostDetail = () => {
                   }).replace(/\. /g, '.').replace(/\.$/, '')
                 : '-';
 
+              // 내림차순 번호 계산 (전체 개수 - 현재 인덱스)
+              const displayNumber = filteredPosts.length - index;
+
               return (
                 <div
                   key={post.id}
@@ -583,7 +586,7 @@ const CommunityPostDetail = () => {
                   onClick={() => navigate(`/community/post/${post.id}`)}
                 >
                   <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
-                    {post.id}
+                    {displayNumber}
                   </div>
                   <div className="w-[100px] h-[30px] flex items-center justify-center text-[13px] text-black">
                     {post.category || '-'}

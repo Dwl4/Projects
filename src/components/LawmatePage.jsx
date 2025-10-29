@@ -485,7 +485,7 @@ export default function LawmatePage() {
                 </h1>
                 <p className="text-[15px] text-[#7b7b7b] leading-[1.5]">
                   Lawmate는 어려운 법률 용어와 복잡한 절차를 쉽게 풀어드립니다.<br />
-                  누구나 자연어로 질문하면, AI가 관련 법령과 판례를 찾아드리고<br />
+                  누구나 자연어로 질문하면 답변을 받을 수 있고,<br />
                   필요할 경우, 등록된 변호사 정보를 통해 추가 상담도 안내합니다.<br />
                   <br />
                   당신의 법률 고민, 이제 혼자 해결하지 마세요.<br />

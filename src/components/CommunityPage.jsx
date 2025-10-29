@@ -239,14 +239,18 @@ const CommunityPage = ({ onPostClick, onWriteClick }) => {
           )}
 
           {/* Table Rows */}
-          {!loading && !error && posts.length > 0 && posts.map((post) => (
+          {!loading && !error && posts.length > 0 && posts.map((post, index) => {
+            // 내림차순 번호 계산 (전체 개수 - 현재 인덱스)
+            const displayNumber = posts.length - index;
+
+            return (
             <div
               key={post.id}
               className="w-full bg-white flex hover:bg-gray-50 transition-colors cursor-pointer"
               onClick={() => handlePostClick(post)}
             >
               <div className="w-[100px] h-[30px] flex items-center justify-center p-[10px] text-[13px] text-black">
-                {post.id}
+                {displayNumber}
               </div>
               <div className="w-[100px] h-[30px] flex items-center justify-center p-[10px] text-[13px] text-black">
                 {post.category || '-'}
@@ -280,7 +284,8 @@ const CommunityPage = ({ onPostClick, onWriteClick }) => {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Pagination */}
