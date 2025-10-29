@@ -16,16 +16,22 @@ const LawyerListContent = () => {
   // 전문분야 목록
   const specialties = [
     '전체',
-    '형사',
-    '민사',
-    '가족법',
+    '이혼',
     '상속',
+    '양육권',
+    '특허',
+    '저작권',
+    '상표권',
+    '스타트업',
+    '투자계약',
+    'M&A',
+    '민사소송',
+    '형사소송',
+    '성범죄',
     '부동산',
     '교통사고',
     '의료',
-    '노동',
-    '기업법무',
-    '지적재산권'
+    '노동'
   ];
 
   // localStorage에서 즐겨찾기 불러오기
@@ -35,6 +41,16 @@ const LawyerListContent = () => {
   };
 
   const [favorites, setFavorites] = useState(getFavoritesFromStorage());
+
+  // 배열을 무작위로 섞는 함수 (Fisher-Yates 알고리즘)
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
 
   // 변호사 목록 불러오기
   useEffect(() => {
@@ -59,7 +75,9 @@ const LawyerListContent = () => {
         console.log('✅ 변호사 검색 응답:', response);
 
         // API 응답 구조: { total, page, limit, items }
-        setLawyers(response.items || []);
+        // 변호사 목록을 무작위로 섞기
+        const shuffledLawyers = shuffleArray(response.items || []);
+        setLawyers(shuffledLawyers);
         setTotalLawyers(response.total || 0);
         setCurrentPage(response.page || 1);
       } catch (err) {
@@ -115,7 +133,8 @@ const LawyerListContent = () => {
         {/* 안내 문구 */}
         <div className="w-full flex justify-center items-center py-[20px]">
           <p className="text-[15px] text-black text-center leading-[1.5]">
-            본 플랫폼은 변호사 소개 또는 알선을 목적으로 하지 않으며, 변호사 노출 순서는 랜덤 방식으로 운영됩니다.
+            본 플랫폼은 변호사 소개 또는 알선을 목적으로 하지 않으며, 변호사 노출 순서는 랜덤 방식으로 운영됩니다.<br />
+            <span className="text-[13px] text-gray-500">본 변호사들은 가상 인물입니다.</span>
           </p>
         </div>
 

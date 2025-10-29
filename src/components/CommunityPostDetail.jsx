@@ -2,9 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as communityService from '../api/communityService';
 
+// 기본 프로필 아이콘 SVG 컴포넌트
+const DefaultProfileIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-gray-400">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>
+);
+
 // 프로필 이미지 URL 처리 함수
 const getProfileImageUrl = (imagePath) => {
-  if (!imagePath) return '/assets/Login_Image.png';
+  if (!imagePath) return null;
 
   // 이미 전체 URL인 경우
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
@@ -274,15 +281,20 @@ const CommunityPostDetail = () => {
           {/* 댓글 헤더 */}
           <div className="px-[30px] h-[50px] flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-[40px] h-[40px] rounded-full overflow-hidden mr-[10px]">
-                <img
-                  src={profileImage}
-                  alt="프로필"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src = '/assets/Login_Image.png';
-                  }}
-                />
+              <div className="w-[40px] h-[40px] rounded-full overflow-hidden mr-[10px] bg-gray-100 flex items-center justify-center">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="프로필"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-gray-400"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                    }}
+                  />
+                ) : (
+                  <DefaultProfileIcon />
+                )}
               </div>
               <span className="text-[13px] text-black font-bold mr-[10px]">
                 {displayName}
@@ -435,39 +447,42 @@ const CommunityPostDetail = () => {
         {/* 게시글 내용 섹션 */}
         <div className="h-[393px]">
           {/* 게시글 제목 헤더 */}
-          <div className="pl-[50px] h-[38px] flex items-center">
-            <div className="w-[100px] h-[23px] flex items-center justify-center">
+          <div className="pl-[20px] pr-[20px] h-[38px] flex items-center gap-[10px]">
+            <div className="w-[80px] h-[23px] flex items-center justify-center">
               <span className="text-[15px] text-black">{postData?.category || '-'}</span>
             </div>
-            <div className="w-[2px] h-[15px] bg-gray-400 mx-[10px]"></div>
-            <div className="flex-1 h-[23px] flex items-center px-[5px] gap-[10px]">
+            <div className="w-[2px] h-[15px] bg-gray-400"></div>
+            <div className="flex-1 h-[23px] flex items-center">
               <span className="text-[15px] text-black">{postData?.title || ''}</span>
-              {/* 작성자 정보 */}
-              <div className="flex items-center gap-[5px] ml-auto">
-                <div className="w-[20px] h-[20px] rounded-full overflow-hidden">
+            </div>
+            {/* 작성자 정보 */}
+            <div className="flex items-center gap-[5px] mr-[10px]">
+              <div className="w-[20px] h-[20px] rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                {getProfileImageUrl(postData?.user_profile_image) ? (
                   <img
                     src={getProfileImageUrl(postData?.user_profile_image)}
                     alt="작성자"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = '/assets/Login_Image.png';
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-gray-400"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
                     }}
                   />
-                </div>
-                <span className="text-[12px] text-gray-600">
-                  {postData?.user_nickname || postData?.user_name || '익명'}
-                </span>
+                ) : (
+                  <DefaultProfileIcon />
+                )}
               </div>
+              <span className="text-[12px] text-gray-600">
+                {postData?.user_nickname || postData?.user_name || '익명'}
+              </span>
             </div>
-            <div className="w-[100px] h-[23px] flex items-center justify-center">
-              <div className="flex items-center gap-[3px]">
-                <img
-                  src="/assets/eye_icon.png"
-                  alt="조회수"
-                  className="w-[14px] h-[14px] object-contain"
-                />
-                <span className="text-[12px] text-black">{postData?.views || 0}</span>
-              </div>
+            <div className="flex items-center gap-[3px]">
+              <img
+                src="/assets/eye_icon.png"
+                alt="조회수"
+                className="w-[14px] h-[14px] object-contain"
+              />
+              <span className="text-[12px] text-black">{postData?.views || 0}</span>
             </div>
           </div>
 

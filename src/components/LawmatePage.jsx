@@ -15,6 +15,7 @@ import LawyerProfileContent from './LawyerProfileContent';  // ✅ 변호사 프
 import LawyerProfileEditContent from './LawyerProfileEditContent';  // ✅ 변호사 프로필 수정 컴포넌트 import
 import NearbyLawyersMap from './NearbyLawyersMap';  // ✅ 내 근처 변호사 지도 컴포넌트 import
 import { demoCaseData } from '../data/demoData';  // ✅ 사건 데이터 import
+import { demoDictionaryData } from '../data/demoDictionaryData';  // ✅ 용어사전 데이터 import
 import { authService, aiChatService, lawyerService } from '../api';  // ✅ API 서비스 import
 
 const imgLawMatrLogo = "/assets/Lawmate_Logo.png";
@@ -26,6 +27,7 @@ export default function LawmatePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('Index');
   const [searchQuery, setSearchQuery] = useState('');
+  const [randomTerms, setRandomTerms] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -151,6 +153,15 @@ export default function LawmatePage() {
   useEffect(() => {
     setActiveSection(getActiveSectionFromPath());
   }, [location.pathname]);
+
+  // 랜덤 용어 3개 선택 (컴포넌트 마운트 시 한 번만 실행)
+  useEffect(() => {
+    const getRandomTerms = () => {
+      const shuffled = [...demoDictionaryData].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 3);
+    };
+    setRandomTerms(getRandomTerms());
+  }, []);
 
   // 사건 기록 상태 (상위 컴포넌트로 이동)
   const [sessions, setSessions] = useState([]);
@@ -526,28 +537,18 @@ export default function LawmatePage() {
               <section className="px-[43px] pt-[50px] py-[70px]">
                 <h2 className="text-[16px] font-bold text-[#4b4b4b] mb-[26px]">용어 팁!</h2>
                 <div className="grid grid-cols-3 gap-[27px]">
-                  <div className="bg-white border-2 border-[#9e9e9e] rounded-[10px] px-[20px] py-[12px] h-[100px]">
-                    <h3 className="font-bold text-[14px] text-black mb-[4px]">공포 :</h3>
-                    <p className="text-[11px] text-black leading-[normal]">
-                      법령을 일반국민에게 널리 알리는 행위를 말한다.<br />
-                      법률은 특별한 규정이 없는 한 공포한 날로부터<br />
-                      20일을 경과함으로써 효력을 발생한다.
-                    </p>
-                  </div>
-                  <div className="bg-white border-2 border-[#9e9e9e] rounded-[10px] px-[20px] py-[12px] h-[100px]">
-                    <h3 className="font-bold text-[14px] text-black mb-[4px]">훈령 :</h3>
-                    <p className="text-[11px] text-black leading-[normal]">
-                      요약 상급관청이 하급관청의 권한행사를 지시하기<br />
-                      위해 하는 일반적 형식의 명령.
-                    </p>
-                  </div>
-                  <div className="bg-white border-2 border-[#9e9e9e] rounded-[10px] px-[20px] py-[12px] h-[100px]">
-                    <h3 className="font-bold text-[14px] text-black mb-[8px]">소멸시효 :</h3>
-                    <p className="text-[11px] text-black leading-[normal]">
-                      일정 시간이 지나면 권리를 행사할 수 없게 되는<br />
-                      제도
-                    </p>
-                  </div>
+                  {randomTerms.map((term, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border-2 border-[#9e9e9e] rounded-[10px] px-[20px] py-[12px] h-[100px] cursor-pointer hover:border-[#9EC3E5] hover:shadow-md transition-all"
+                      onClick={() => navigate(`/dictionary/${encodeURIComponent(term.term)}`)}
+                    >
+                      <h3 className="font-bold text-[14px] text-black mb-[4px]">{term.term} :</h3>
+                      <p className="text-[11px] text-black leading-[normal] line-clamp-3 overflow-hidden">
+                        {term.definition}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </section>
                 </>
@@ -620,11 +621,17 @@ export default function LawmatePage() {
         </main>
 
         {/* Footer */}
-        <footer className="relative z-50 bg-[#9ec3e5] h-[100px] flex items-center justify-between px-[50px]">
+        <footer className="relative z-50 bg-[#9ec3e5] min-h-[120px] flex items-center justify-between px-[50px] py-[15px]">
           <div className="flex-1 flex flex-col justify-center">
             <p className="text-white text-[12px] font-extralight text-shadow-[1px_1px_1px_rgba(0,0,0,0.25)] mb-[4px]">
               "LAW MATE는 법률 자문을 대체하지 않으며, AI가 제공하는 내용은 참고용 자료입니다. 실제 법률 자문은 반드시 변호사와 상담하시기 바랍니다."<br />
               "고객의 개인정보는 안전하게 보호되며, 최소한의 정보만 수집·활용합니다."
+            </p>
+            <p className="text-white text-[10px] font-extralight text-shadow-[1px_1px_1px_rgba(0,0,0,0.25)] mb-[6px]">
+              본 서비스는 <a href="https://www.law.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-200">국가법령정보센터</a>(법제처)에서 제공하는
+              「법률용어」 및 「판례」 공공데이터를 활용하였습니다.<br />
+              본 데이터는 공공데이터포털(www.data.go.kr)을 통해 제공받았으며,
+              법제처의 저작권 정책에 따라 출처를 표시하였습니다.
             </p>
             <p className="text-white text-[10px] font-extralight text-shadow-[1px_1px_1px_rgba(0,0,0,0.25)] text-right mb-[4px]">
               © 2025 LAW MATE. All Rights Reserved.
